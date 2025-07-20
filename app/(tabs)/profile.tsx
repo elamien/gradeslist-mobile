@@ -204,18 +204,28 @@ export default function ProfileScreen() {
   };
 
   const handleLoginSubmit = async () => {
-    if (!username.trim() || !password.trim()) {
-      Alert.alert('Error', `Please enter both ${selectedConnection?.id === 'canvas' ? 'API token' : 'email'} and password`);
-      return;
+    if (selectedConnection?.id === 'canvas') {
+      if (!username.trim()) {
+        Alert.alert('Error', 'Please enter your Canvas API token');
+        return;
+      }
+    } else {
+      if (!username.trim() || !password.trim()) {
+        Alert.alert('Error', 'Please enter both email and password');
+        return;
+      }
     }
 
     setIsConnecting(true);
     try {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      await connectPlatform(selectedConnection!.id, {
-        username: username.trim(),
-        password: password.trim(),
-      });
+      
+      // For Canvas, use token field; for others, use username/password
+      const credentials = selectedConnection?.id === 'canvas' 
+        ? { token: username.trim() }
+        : { username: username.trim(), password: password.trim() };
+        
+      await connectPlatform(selectedConnection!.id, credentials);
       
       // Clear form
       setUsername('');
@@ -902,42 +912,44 @@ export default function ProfileScreen() {
               />
             </View>
 
-            <View style={{ marginBottom: 24 }}>
-              <Text style={{ fontSize: 16, fontWeight: '500', marginBottom: 8 }}>
-                Password
-              </Text>
-              <View style={{ position: 'relative' }}>
-                <TextInput
-                  style={{
-                    borderWidth: 1,
-                    borderColor: '#e5e5e5',
-                    borderRadius: 8,
-                    padding: 12,
-                    paddingRight: 50,
-                    fontSize: 16,
-                    backgroundColor: '#f9f9f9'
-                  }}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoComplete="password"
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: 12,
-                    top: 12,
-                    padding: 4,
-                  }}
-                >
-                  <Text style={{ fontSize: 16, color: '#666' }}>
-                    {showPassword ? '🙈' : '👁️'}
-                  </Text>
-                </TouchableOpacity>
+            {selectedConnection?.id !== 'canvas' && (
+              <View style={{ marginBottom: 24 }}>
+                <Text style={{ fontSize: 16, fontWeight: '500', marginBottom: 8 }}>
+                  Password
+                </Text>
+                <View style={{ position: 'relative' }}>
+                  <TextInput
+                    style={{
+                      borderWidth: 1,
+                      borderColor: '#e5e5e5',
+                      borderRadius: 8,
+                      padding: 12,
+                      paddingRight: 50,
+                      fontSize: 16,
+                      backgroundColor: '#f9f9f9'
+                    }}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoComplete="password"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: 12,
+                      top: 12,
+                      padding: 4,
+                    }}
+                  >
+                    <Text style={{ fontSize: 16, color: '#666' }}>
+                      {showPassword ? '🙈' : '👁️'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
+            )}
 
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity
