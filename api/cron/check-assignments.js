@@ -208,10 +208,13 @@ async function sendNewAssignmentNotifications(pushToken, newAssignments) {
  * Mock users for demo (in production, fetch from database)
  */
 function getMockUsers() {
+  // Use test push token if provided (for testing only)
+  const testPushToken = process.env.TEST_PUSH_TOKEN;
+  
   return [
     {
       id: 'demo-user-1',
-      pushToken: 'ExponentPushToken[demo-token]', // This would be real tokens from registration
+      pushToken: testPushToken || 'ExponentPushToken[demo-token]', // Use test token if available
       platforms: [
         {
           id: 'canvas',
