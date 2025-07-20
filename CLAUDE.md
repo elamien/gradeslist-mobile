@@ -25,6 +25,13 @@
 - Expo Router for navigation
 - Three main tabs: Due, Grades, Profile
 
+## Git Commit Guidelines
+- **Keep it concise**: One line summary, max 50 chars
+- **Use conventional commits**: feat:, fix:, refactor:, docs:
+- **Be specific but brief**: "add notifications" not "implement comprehensive notification system with push alerts and background services"
+- **Bullet points if needed**: Use 2-4 brief bullets for complex changes
+- **No verbose explanations**: Let the code speak, commits are for what/why not how
+
 ## Development Workflow
 
 ### Server Management
