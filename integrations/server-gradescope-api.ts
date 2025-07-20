@@ -3,9 +3,7 @@ import { GradescopeAssignment, GradescopeCourse, GradescopeCourseList } from './
 import { PlatformCredentials } from '../store/useAppStore';
 
 // Configure server URL - update this when you deploy
-const SERVER_BASE_URL = __DEV__ 
-  ? 'http://192.168.0.250:3001'  // Development - use local IP for mobile simulator access
-  : 'https://your-server-domain.com';  // Production
+const SERVER_BASE_URL = 'https://gradeslist-mobile.vercel.app';
 
 interface ServerResponse<T> {
   success: boolean;
