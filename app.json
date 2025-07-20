@@ -33,8 +33,21 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#3b82f6",
+          "defaultChannel": "default"
+        }
       ]
     ],
+    "extra": {
+      "eas": {
+        "projectId": "gradeslist-mobile"
+      }
+    },
     "experiments": {
       "typedRoutes": true
     }

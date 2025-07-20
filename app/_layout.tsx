@@ -8,6 +8,7 @@ import { config } from '../tamagui.config';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { initializeCredentials } from '../store/useAppStore';
+import { NotificationService } from '../services/notificationService';
 
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient({
@@ -26,9 +27,23 @@ export default function RootLayout() {
     },
   }));
 
-  // Initialize credentials when app starts
+  // Initialize credentials and notifications when app starts
   useEffect(() => {
-    initializeCredentials();
+    const initializeApp = async () => {
+      try {
+        // Initialize credentials first
+        await initializeCredentials();
+        
+        // Set up notification listeners (don't auto-enable notifications)
+        NotificationService.setupNotificationListeners();
+        
+        console.log('App initialization complete');
+      } catch (error) {
+        console.error('App initialization error:', error);
+      }
+    };
+
+    initializeApp();
   }, []);
 
   return (

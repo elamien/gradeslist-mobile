@@ -1,11 +1,12 @@
-import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, Alert, LayoutAnimation, Platform, UIManager, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, Alert, LayoutAnimation, Platform, UIManager, RefreshControl, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useCourses } from '../../hooks/useCourses';
 import { GradescopeLogin } from '../../components/GradescopeLogin';
 import { GradescopeWebViewProxy, GradescopeProxyMethods } from '../../components/GradescopeWebViewProxy';
 import { setGradescopeProxy, clearGradescopeProxy } from '../../utils/proxyRegistry';
+import { NotificationService } from '../../services/notificationService';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android') {
@@ -17,7 +18,12 @@ if (Platform.OS === 'android') {
 export default function ProfileScreen() {
   const { 
     connections, 
-    selectedConnection, 
+    selectedConnection,
+    notificationsEnabled,
+    notificationPreferences,
+    setNotificationsEnabled,
+    updateNotificationPreferences,
+    setPushToken, 
     selectedTerm,
     selectedSeason,
     selectedYear,
@@ -732,6 +738,140 @@ export default function ProfileScreen() {
                       <Text style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
                         Only assignments from selected courses will be synced
                       </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Notification Settings */}
+                <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#e5e5e5' }}>
+                  <Text style={{ fontSize: 16, fontWeight: '500', marginBottom: 8, color: '#3b82f6' }}>
+                    Push Notifications
+                  </Text>
+                  <Text style={{ fontSize: 14, color: '#666', marginBottom: 12 }}>
+                    Get notified when new assignments are posted (even when app is closed)
+                  </Text>
+                  
+                  {/* Enable/Disable Notifications */}
+                  <View style={{ 
+                    flexDirection: 'row', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    marginBottom: 16,
+                    padding: 12,
+                    backgroundColor: '#f9f9f9',
+                    borderRadius: 8
+                  }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '500' }}>
+                        Enable Notifications
+                      </Text>
+                      <Text style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+                        Receive push notifications for new assignments
+                      </Text>
+                    </View>
+                    <Switch
+                      value={notificationsEnabled}
+                      onValueChange={async (enabled) => {
+                        if (enabled) {
+                          // Request permissions and set up notifications
+                          try {
+                            await NotificationService.initialize();
+                            setNotificationsEnabled(true);
+                            Alert.alert('Success', 'Notifications enabled! You\'ll be notified of new assignments.');
+                          } catch (error) {
+                            Alert.alert('Error', 'Failed to enable notifications. Please check your permissions.');
+                          }
+                        } else {
+                          setNotificationsEnabled(false);
+                        }
+                      }}
+                      trackColor={{ false: '#e5e5e5', true: '#3b82f6' }}
+                      thumbColor={notificationsEnabled ? '#ffffff' : '#ffffff'}
+                    />
+                  </View>
+
+                  {notificationsEnabled && (
+                    <View>
+                      <Text style={{ fontSize: 14, fontWeight: '500', marginBottom: 8 }}>
+                        Notification Types
+                      </Text>
+                      
+                      {/* New Assignments */}
+                      <View style={{ 
+                        flexDirection: 'row', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        marginBottom: 8,
+                        paddingVertical: 8
+                      }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 14 }}>New Assignments</Text>
+                          <Text style={{ fontSize: 12, color: '#666' }}>When professors post new assignments</Text>
+                        </View>
+                        <Switch
+                          value={notificationPreferences.newAssignments}
+                          onValueChange={(value) => updateNotificationPreferences({ newAssignments: value })}
+                          trackColor={{ false: '#e5e5e5', true: '#3b82f6' }}
+                          thumbColor={notificationPreferences.newAssignments ? '#ffffff' : '#ffffff'}
+                        />
+                      </View>
+
+                      {/* Due Date Reminders */}
+                      <View style={{ 
+                        flexDirection: 'row', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        marginBottom: 8,
+                        paddingVertical: 8
+                      }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 14 }}>Due Date Reminders</Text>
+                          <Text style={{ fontSize: 12, color: '#666' }}>24 hours before assignments are due</Text>
+                        </View>
+                        <Switch
+                          value={notificationPreferences.dueDateReminders}
+                          onValueChange={(value) => updateNotificationPreferences({ dueDateReminders: value })}
+                          trackColor={{ false: '#e5e5e5', true: '#3b82f6' }}
+                          thumbColor={notificationPreferences.dueDateReminders ? '#ffffff' : '#ffffff'}
+                        />
+                      </View>
+
+                      {/* Grade Updates */}
+                      <View style={{ 
+                        flexDirection: 'row', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        paddingVertical: 8
+                      }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 14 }}>Grade Updates</Text>
+                          <Text style={{ fontSize: 12, color: '#666' }}>When assignments are graded</Text>
+                        </View>
+                        <Switch
+                          value={notificationPreferences.gradeUpdates}
+                          onValueChange={(value) => updateNotificationPreferences({ gradeUpdates: value })}
+                          trackColor={{ false: '#e5e5e5', true: '#3b82f6' }}
+                          thumbColor={notificationPreferences.gradeUpdates ? '#ffffff' : '#ffffff'}
+                        />
+                      </View>
+
+                      {/* Test Notification Button */}
+                      <TouchableOpacity
+                        onPress={() => NotificationService.sendTestNotification()}
+                        style={{
+                          marginTop: 12,
+                          padding: 10,
+                          backgroundColor: '#f0f9ff',
+                          borderRadius: 6,
+                          borderWidth: 1,
+                          borderColor: '#bfdbfe',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <Text style={{ fontSize: 12, color: '#1e40af', fontWeight: '500' }}>
+                          Send Test Notification
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                   )}
                 </View>

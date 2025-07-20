@@ -42,6 +42,15 @@ interface AppState {
   selectedCourseIds: string[]; // Array of course IDs to sync
   showCompletedTasks: boolean;
   
+  // Notification state
+  notificationsEnabled: boolean;
+  notificationPreferences: {
+    newAssignments: boolean;
+    dueDateReminders: boolean;
+    gradeUpdates: boolean;
+  };
+  pushToken: string | null;
+  
   // Actions
   updateConnection: (id: string, updates: Partial<PlatformConnection>) => void;
   connectPlatform: (id: string, credentials: PlatformCredentials) => Promise<void>;
@@ -51,6 +60,11 @@ interface AppState {
   toggleCourseSelection: (courseId: string) => void;
   setShowCompletedTasks: (show: boolean) => void;
   setSelectedTerm: (season: 'spring' | 'summer' | 'fall' | 'winter', year: number) => void;
+  
+  // Notification actions
+  setNotificationsEnabled: (enabled: boolean) => void;
+  updateNotificationPreferences: (preferences: Partial<AppState['notificationPreferences']>) => void;
+  setPushToken: (token: string | null) => void;
 }
 
 // Initial connection data - only Canvas and Gradescope supported
@@ -102,6 +116,15 @@ export const useAppStore = create<AppState>()(
       selectedYear: 2025,
       selectedCourseIds: [],
       showCompletedTasks: false,
+      
+      // Notification initial state
+      notificationsEnabled: false,
+      notificationPreferences: {
+        newAssignments: true,
+        dueDateReminders: true,
+        gradeUpdates: true,
+      },
+      pushToken: null,
 
       // Actions
       updateConnection: (id, updates) =>
@@ -185,6 +208,21 @@ export const useAppStore = create<AppState>()(
           selectedYear: year
         });
       },
+
+      // Notification actions
+      setNotificationsEnabled: (enabled) =>
+        set({ notificationsEnabled: enabled }),
+
+      updateNotificationPreferences: (preferences) =>
+        set((state) => ({
+          notificationPreferences: {
+            ...state.notificationPreferences,
+            ...preferences
+          }
+        })),
+
+      setPushToken: (token) =>
+        set({ pushToken: token }),
     }),
     {
       name: 'app-store',
@@ -200,6 +238,9 @@ export const useAppStore = create<AppState>()(
         selectedYear: state.selectedYear,
         selectedCourseIds: state.selectedCourseIds,
         showCompletedTasks: state.showCompletedTasks,
+        notificationsEnabled: state.notificationsEnabled,
+        notificationPreferences: state.notificationPreferences,
+        pushToken: state.pushToken,
       }),
     }
   )
