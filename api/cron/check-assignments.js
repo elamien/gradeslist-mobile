@@ -17,9 +17,16 @@ module.exports = async function handler(req, res) {
   try {
     // Verify this is a cron request (optional security)
     const authHeader = req.headers.authorization;
+    const secret = authHeader?.replace('Bearer ', '');
     const validSecrets = [process.env.CRON_SECRET, 'test-secret']; // Allow test-secret for manual testing
-    if (!validSecrets.includes(authHeader?.replace('Bearer ', ''))) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    
+    console.log('Auth check:', { authHeader, secret, validSecrets });
+    
+    if (!validSecrets.includes(secret)) {
+      return res.status(401).json({ 
+        error: 'Unauthorized',
+        debug: { receivedSecret: secret, validSecrets: validSecrets.filter(s => s) }
+      });
     }
 
     // In production, fetch all registered users from database
