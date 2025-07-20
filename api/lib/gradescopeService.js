@@ -1,5 +1,5 @@
-import axios from 'axios';
-import * as cheerio from 'cheerio';
+const axios = require('axios');
+const cheerio = require('cheerio');
 
 // Create axios instance with default config
 const client = axios.create({
@@ -13,7 +13,7 @@ const client = axios.create({
  * Authenticate with Gradescope and return session cookies
  * Note: Session caching removed for Vercel serverless compatibility
  */
-export async function authenticateGradescope(email, password) {
+async function authenticateGradescope(email, password) {
   const GRADESCOPE_BASE_URL = 'https://www.gradescope.com';
   
   try {
@@ -121,7 +121,7 @@ export async function authenticateGradescope(email, password) {
 /**
  * Fetch courses from Gradescope account page
  */
-export async function fetchCourses(sessionCookies, filterTerm = null) {
+async function fetchCourses(sessionCookies, filterTerm = null) {
   try {
     console.log('Fetching courses from account page...');
     
@@ -281,7 +281,7 @@ export async function fetchCourses(sessionCookies, filterTerm = null) {
 /**
  * Fetch assignments for a specific course
  */
-export async function fetchAssignments(sessionCookies, courseId) {
+async function fetchAssignments(sessionCookies, courseId) {
   try {
     console.log(`Fetching assignments for course ${courseId}...`);
     
@@ -476,3 +476,9 @@ export async function fetchAssignments(sessionCookies, courseId) {
     throw new Error(`Failed to fetch assignments: ${error.message}`);
   }
 }
+
+module.exports = {
+  authenticateGradescope,
+  fetchCourses,
+  fetchAssignments
+};
