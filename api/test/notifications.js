@@ -15,12 +15,12 @@ module.exports = async function handler(req, res) {
   try {
     console.log('🧪 Manual notification test triggered');
     
-    // Simulate cron request with auth header
+    // Simulate cron request with auth header - bypass auth for manual testing
     const mockRequest = {
       ...req,
       headers: {
         ...req.headers,
-        authorization: `Bearer ${process.env.CRON_SECRET || 'test-secret'}`
+        authorization: `Bearer test-secret` // Use a test secret for manual testing
       }
     };
 
