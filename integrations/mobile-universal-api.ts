@@ -21,10 +21,10 @@ import { PlatformCredentials } from '../store/useAppStore';
  */
 export async function getCanvasAssignments(
   courseId: string,
-  apiToken: string
+  apiTokenOrCredentials: string | PlatformCredentials
 ): Promise<UniversalAssignment[]> {
   try {
-    const canvasAssignments = await fetchCanvasAssignments(courseId, apiToken);
+    const canvasAssignments = await fetchCanvasAssignments(courseId, apiTokenOrCredentials);
     return mapCanvasAssignmentsToUniversal(canvasAssignments).map(assignment => ({
       ...assignment,
       course_name: `Course ${courseId}`, // Would be enriched with actual course name
@@ -66,7 +66,7 @@ export async function getAssignments(
   selectedCourseIds: string[] = []
 ): Promise<UniversalAssignment[]> {
   if (platform === 'canvas') {
-    if (!credentials.username) throw new Error('Canvas API token is required.');
+    if (!credentials.token && !credentials.username) throw new Error('Canvas API token is required.');
     
     // Early return if no courses selected
     if (selectedCourseIds.length === 0) {
@@ -74,7 +74,7 @@ export async function getAssignments(
     }
     
     // For Canvas, we need to first fetch courses to get course IDs
-    const courses = await getCanvasCourses(selectedTerm, credentials.username); // username is API token for Canvas
+    const courses = await getCanvasCourses(selectedTerm, credentials);
     const allAssignments: UniversalAssignment[] = [];
     
     // Filter courses to only selected ones
@@ -83,7 +83,7 @@ export async function getAssignments(
     // Fetch assignments for each selected course
     for (const course of selectedCourses) {
       try {
-        const assignments = await getCanvasAssignments(course.id, credentials.username);
+        const assignments = await getCanvasAssignments(course.id, credentials);
         // Add course name and course_id to assignments
         const enrichedAssignments = assignments.map(assignment => ({
           ...assignment,
@@ -144,10 +144,10 @@ export async function getAssignments(
  */
 export async function getCanvasCourses(
   filterTerm: string,
-  apiToken: string
+  apiTokenOrCredentials: string | PlatformCredentials
 ): Promise<UniversalCourse[]> {
   try {
-    const canvasCourses = await fetchCanvasCourses(filterTerm, apiToken);
+    const canvasCourses = await fetchCanvasCourses(filterTerm, apiTokenOrCredentials);
     return mapCanvasCoursesToUniversal(canvasCourses).map(course => ({
       ...course,
       platform: 'canvas' as const
@@ -194,8 +194,8 @@ export async function getCourses(
   selectedTerm: string = 'spring 2025'
 ): Promise<UniversalCourse[]> {
   if (platform === 'canvas') {
-    if (!credentials.username) throw new Error('Canvas API token is required.');
-    return await getCanvasCourses(selectedTerm, credentials.username); // username is API token for Canvas
+    if (!credentials.token && !credentials.username) throw new Error('Canvas API token is required.');
+    return await getCanvasCourses(selectedTerm, credentials);
   } else {
     const courseList = await getGradescopeCourses(selectedTerm, credentials);
     return [...courseList.student, ...courseList.instructor];
@@ -214,10 +214,10 @@ export async function testConnection(
   credentials: PlatformCredentials
 ): Promise<boolean> {
   if (platform === 'canvas') {
-    if (!credentials.username) {
-      throw new Error('Canvas API token (username) is required.');
+    if (!credentials.token && !credentials.username) {
+      throw new Error('Canvas API token is required.');
     }
-    return await testCanvasConnection(credentials.username); // username is API token for Canvas
+    return await testCanvasConnection(credentials);
   } else {
     return await testGradescopeConnection(credentials);
   }

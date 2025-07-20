@@ -2,6 +2,7 @@
 // Based on the original canvas-api.ts but optimized for React Native
 
 import { CanvasAssignment, CanvasCourse } from './canvas-api';
+import { PlatformCredentials } from '../store/useAppStore';
 
 // Configuration
 const CANVAS_BASE_URL = 'https://canvas.its.virginia.edu';
@@ -81,9 +82,29 @@ async function makeCanvasRequest(endpoint: string, apiToken: string) {
   return await requestPromise;
 }
 
-// Core function to fetch courses
-export async function fetchCanvasCourses(filterTerm: string, apiToken: string): Promise<CanvasCourse[]> {
+// Core function to fetch courses - supports both direct API and server-based calls
+export async function fetchCanvasCourses(filterTerm: string, apiTokenOrCredentials: string | PlatformCredentials): Promise<CanvasCourse[]> {
   try {
+    // Check if this is server-based authentication
+    if (typeof apiTokenOrCredentials === 'object' && apiTokenOrCredentials.token) {
+      console.log('Using server-based Canvas course fetching');
+      try {
+        const { fetchServerCanvasCourses } = await import('./server-canvas-api');
+        const courses = await fetchServerCanvasCourses(filterTerm, apiTokenOrCredentials);
+        console.log('Got Canvas courses from server:', courses);
+        return courses;
+      } catch (error) {
+        console.error('Error fetching Canvas courses from server:', error);
+        throw error;
+      }
+    }
+    
+    // Direct Canvas API call
+    const apiToken = typeof apiTokenOrCredentials === 'string' ? apiTokenOrCredentials : apiTokenOrCredentials.token || '';
+    if (!apiToken) {
+      throw new Error('Canvas API token is required');
+    }
+    
     // Only fetch essential course fields to reduce payload size
     const courses = await makeCanvasRequest('/api/v1/courses?enrollment_state=active&include[]=term&per_page=100&only[]=id,name,course_code,term', apiToken);
     
@@ -101,9 +122,29 @@ export async function fetchCanvasCourses(filterTerm: string, apiToken: string): 
   }
 }
 
-// Core function to fetch assignments
-export async function fetchCanvasAssignments(courseId: number | string, apiToken: string): Promise<CanvasAssignment[]> {
+// Core function to fetch assignments - supports both direct API and server-based calls
+export async function fetchCanvasAssignments(courseId: number | string, apiTokenOrCredentials: string | PlatformCredentials): Promise<CanvasAssignment[]> {
   try {
+    // Check if this is server-based authentication
+    if (typeof apiTokenOrCredentials === 'object' && apiTokenOrCredentials.token) {
+      console.log('Using server-based Canvas assignment fetching');
+      try {
+        const { fetchServerCanvasAssignments } = await import('./server-canvas-api');
+        const assignments = await fetchServerCanvasAssignments(courseId.toString(), apiTokenOrCredentials);
+        console.log('Got Canvas assignments from server:', assignments);
+        return assignments;
+      } catch (error) {
+        console.error('Error fetching Canvas assignments from server:', error);
+        throw error;
+      }
+    }
+    
+    // Direct Canvas API call
+    const apiToken = typeof apiTokenOrCredentials === 'string' ? apiTokenOrCredentials : apiTokenOrCredentials.token || '';
+    if (!apiToken) {
+      throw new Error('Canvas API token is required');
+    }
+    
     // Optimize Canvas API request - only request essential fields, increase page size
     const assignmentsEndpoint = `/api/v1/courses/${courseId}/assignments?include[]=submission&per_page=200&order_by=due_at&only[]=id,name,due_at,points_possible,submission`;
     const assignments = await makeCanvasRequest(assignmentsEndpoint, apiToken);
@@ -124,9 +165,27 @@ export async function fetchCanvasUserProfile(apiToken: string): Promise<any> {
   }
 }
 
-// Test Canvas connection
-export async function testCanvasConnection(apiToken: string): Promise<boolean> {
+// Test Canvas connection - supports both direct API and server-based calls
+export async function testCanvasConnection(apiTokenOrCredentials: string | PlatformCredentials): Promise<boolean> {
   try {
+    // Check if this is server-based authentication
+    if (typeof apiTokenOrCredentials === 'object' && apiTokenOrCredentials.token) {
+      console.log('Testing server-based Canvas connection');
+      try {
+        const { testServerCanvasConnection } = await import('./server-canvas-api');
+        return await testServerCanvasConnection(apiTokenOrCredentials);
+      } catch (error) {
+        console.error('Server Canvas connection test error:', error);
+        return false;
+      }
+    }
+    
+    // Direct Canvas API call
+    const apiToken = typeof apiTokenOrCredentials === 'string' ? apiTokenOrCredentials : apiTokenOrCredentials.token || '';
+    if (!apiToken) {
+      return false;
+    }
+    
     await fetchCanvasUserProfile(apiToken);
     return true;
   } catch (error) {
