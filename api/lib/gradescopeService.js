@@ -290,61 +290,12 @@ async function fetchAssignments(sessionCookies, courseId) {
           return;
         }
         
-        // Extract dates, status, and grades (copied from working code)
+        // Extract dates, status, and grades (EXACT copy from working code)
         const $statusCell = $row.find('td.submissionStatus');
         const $dateCell = $row.find('td:nth-of-type(2)');
+        const dueDateElements = $dateCell.find('time.submissionTimeChart--dueDate').get();
         
-        // Try multiple common Gradescope date selectors
-        let dueDateElements = [];
-        let dueDate = null;
-        
-        // Method 1: Look for time elements with due date classes
-        dueDateElements = $dateCell.find('time.submissionTimeChart--dueDate').get();
-        if (dueDateElements.length === 0) {
-          dueDateElements = $dateCell.find('time').get();
-        }
-        
-        // Method 2: Look in other common cells (3rd, 4th columns)
-        if (dueDateElements.length === 0) {
-          const $thirdCell = $row.find('td:nth-of-type(3)');
-          const $fourthCell = $row.find('td:nth-of-type(4)');
-          
-          dueDateElements = $thirdCell.find('time').get();
-          if (dueDateElements.length === 0) {
-            dueDateElements = $fourthCell.find('time').get();
-          }
-        }
-        
-        // Method 3: Look for specific text patterns that might contain dates
-        if (dueDateElements.length === 0) {
-          // Look for dates in text format like "Jul 15, 2025" or "7/15/2025"
-          $row.find('td').each((i, cell) => {
-            const $cell = $(cell);
-            const cellText = $cell.text().trim();
-            
-            // Common date patterns
-            const datePatterns = [
-              /\b\w{3}\s+\d{1,2},?\s+\d{4}\b/i,     // "Jul 15, 2025" or "Jul 15 2025"
-              /\b\d{1,2}\/\d{1,2}\/\d{4}\b/,        // "7/15/2025"
-              /\b\d{4}-\d{1,2}-\d{1,2}\b/,          // "2025-07-15"
-            ];
-            
-            for (const pattern of datePatterns) {
-              const match = cellText.match(pattern);
-              if (match) {
-                try {
-                  dueDate = new Date(match[0]);
-                  if (!isNaN(dueDate.getTime())) {
-                    console.log(`[REWRITTEN] Found date "${match[0]}" in cell ${i} for ${name}`);
-                    return false; // Break out of each loop
-                  }
-                } catch (e) {
-                  // Continue to next pattern
-                }
-              }
-            }
-          });
-        }
+        console.log(`[REWRITTEN] Assignment "${name}" - found ${dueDateElements.length} due date elements`);
         
         const gradeText = $statusCell.find('.submissionStatus--score').text()?.trim() || '';
         const gradeMatch = gradeText.match(/(\d+\.?\d*)\s*\/\s*(\d+\.?\d*)/);
@@ -365,10 +316,7 @@ async function fetchAssignments(sessionCookies, courseId) {
           submissions_status += ' (Late)';
         }
         
-        // Use parsed text date if found, otherwise try time elements
-        if (!dueDate && dueDateElements.length > 0) {
-          dueDate = parseDate($, dueDateElements[0]);
-        }
+        const dueDate = dueDateElements.length > 0 ? parseDate($, dueDateElements[0]) : null;
         
         console.log(`[REWRITTEN] Final due date for "${name}":`, dueDate);
         
