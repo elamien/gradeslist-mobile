@@ -184,7 +184,56 @@ async function authenticateGradescope(email, password) {
 }
 
 /**
- * Fetch assignments for a specific course (simplified for now)
+ * Parse date from Gradescope elements (copied from working code)
+ */
+function parseDate($, element) {
+  if (!element) {
+    return null;
+  }
+  
+  const $element = $(element);
+  
+  // Try parsing the datetime attribute
+  const datetimeAttr = $element.attr('datetime');
+  if (datetimeAttr) {
+    try {
+      const isoString = datetimeAttr.replace(/ ([-+])/, 'T$1');
+      const parsed = new Date(isoString);
+      if (!isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    } catch (e) {
+      // Ignore parsing errors, try next method
+    }
+  }
+  
+  // Fallback to parsing the human-readable text
+  const dateText = $element.text()?.trim();
+  if (dateText) {
+    try {
+      if (dateText.startsWith('Late Due Date: ')) {
+        const cleanText = dateText.substring('Late Due Date: '.length);
+        const parsed = new Date(cleanText);
+        if (!isNaN(parsed.getTime())) {
+          return parsed;
+        }
+      }
+      
+      // Try direct parsing
+      const parsed = new Date(dateText);
+      if (!isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    } catch (e) {
+      // Ignore parsing errors
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Fetch assignments for a specific course (enhanced with proper parsing)
  */
 async function fetchAssignments(sessionCookies, courseId) {
   try {
@@ -200,7 +249,7 @@ async function fetchAssignments(sessionCookies, courseId) {
     const $ = cheerio.load(response.data);
     const assignments = [];
     
-    // Basic assignment parsing (can be enhanced later)
+    // Enhanced assignment parsing (copied from working code)
     $('#assignments-student-table tbody tr').each((index, rowElement) => {
       try {
         const $row = $(rowElement);
@@ -208,21 +257,71 @@ async function fetchAssignments(sessionCookies, courseId) {
         const $anchor = $nameCell.find('a');
         
         let name = $anchor.length > 0 ? $anchor.text()?.trim() : $nameCell.text()?.trim();
+        let assignment_id = `${courseId}-${index}`;
         
-        if (name) {
-          assignments.push({
-            id: `${courseId}-${index}`,
-            title: name,
-            due_date: null, // Can be enhanced
-            status: 'unknown'
-          });
+        // Try to extract assignment ID from href
+        if ($anchor.length > 0) {
+          const href = $anchor.attr('href');
+          if (href) {
+            const parts = href.split('/').filter(part => part !== '');
+            const submissionsIndex = parts.indexOf('submissions');
+            if (submissionsIndex !== -1 && submissionsIndex + 1 < parts.length) {
+              assignment_id = parts[submissionsIndex - 1];
+            } else if (parts.indexOf('assignments') !== -1 && parts.indexOf('assignments') + 1 < parts.length) {
+              assignment_id = parts[parts.indexOf('assignments') + 1];
+            }
+          }
         }
+        
+        if (!name || !assignment_id) {
+          return;
+        }
+        
+        // Extract dates, status, and grades (copied from working code)
+        const $statusCell = $row.find('td.submissionStatus');
+        const $dateCell = $row.find('td:nth-of-type(2)');
+        const dueDateElements = $dateCell.find('time.submissionTimeChart--dueDate').get();
+        
+        const gradeText = $statusCell.find('.submissionStatus--score').text()?.trim() || '';
+        const gradeMatch = gradeText.match(/(\d+\.?\d*)\s*\/\s*(\d+\.?\d*)/);
+        const grade = gradeMatch ? parseFloat(gradeMatch[1]) : null;
+        const max_grade = gradeMatch ? parseFloat(gradeMatch[2]) : null;
+        
+        let submissions_status = 'Not submitted';
+        const statusText = $statusCell.find('.submissionStatus--text').text()?.trim();
+        if (statusText) {
+          submissions_status = statusText;
+        } else if (grade !== null) {
+          submissions_status = 'Graded';
+        } else if ($statusCell.text()?.includes('Submitted')) {
+          submissions_status = 'Submitted';
+        }
+        
+        if ($statusCell.text()?.includes('Late')) {
+          submissions_status += ' (Late)';
+        }
+        
+        const dueDate = dueDateElements.length > 0 ? parseDate($, dueDateElements[0]) : null;
+        
+        const assignment = {
+          id: assignment_id,
+          title: name,
+          due_date: dueDate,
+          submissions_status: submissions_status,
+          grade: grade,
+          points: max_grade?.toString() || null,
+          status: submissions_status
+        };
+        
+        assignments.push(assignment);
+        
       } catch (error) {
+        console.error(`[REWRITTEN] Error parsing assignment ${index}:`, error.message);
         // Continue to next row
       }
     });
     
-    console.log(`[REWRITTEN] Found ${assignments.length} assignments`);
+    console.log(`[REWRITTEN] Found ${assignments.length} assignments with proper parsing`);
     return assignments;
     
   } catch (error) {
