@@ -24,6 +24,9 @@ export function useOfflineAssignments() {
 
   // Get connected platforms
   const connectedPlatforms = connections.filter(conn => conn.isConnected);
+  
+  console.log('All connections:', connections);
+  console.log('Connected platforms:', connectedPlatforms);
 
   // Load cached assignments from SQLite on mount
   useEffect(() => {
@@ -60,9 +63,20 @@ export function useOfflineAssignments() {
       // Fetch from each connected platform
       for (const connection of connectedPlatforms) {
         try {
+          console.log(`Connection details for ${connection.id}:`, {
+            isConnected: connection.isConnected,
+            hasCredentials: !!connection.credentials,
+            credentials: connection.credentials ? 'present' : 'missing'
+          });
+          
+          if (!connection.credentials) {
+            console.error(`No credentials found for ${connection.id}`);
+            continue;
+          }
+          
           const assignments = await universalAPI.getAssignments(
             connection.id as 'canvas' | 'gradescope',
-            connection.credentials!,
+            connection.credentials,
             selectedTerm,
             selectedCourseIds
           );
