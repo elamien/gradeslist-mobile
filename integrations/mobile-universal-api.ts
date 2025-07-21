@@ -126,7 +126,9 @@ export async function getAssignments(
     // Fetch assignments for each selected course
     for (const course of selectedCourses) {
       try {
+        console.log(`[DEBUG] Processing course: ${course.name} (${course.id})`);
         const assignments = await getGradescopeAssignments(course.id, credentials);
+        console.log(`[DEBUG] Got ${assignments.length} raw assignments, first one:`, assignments[0]);
         
         // Add course name and course_id to assignments
         const enrichedAssignments = assignments.map(assignment => ({
@@ -134,6 +136,7 @@ export async function getAssignments(
           course_id: course.id,
           course_name: course.name
         }));
+        console.log(`[DEBUG] Enriched assignment sample:`, enrichedAssignments[0]);
         allAssignments.push(...enrichedAssignments);
       } catch (error) {
         console.error(`Error fetching assignments for Gradescope course ${course.id}:`, error);
