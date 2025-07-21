@@ -152,12 +152,9 @@ async function fetchCourses(sessionCookies, filterTerm = null) {
     const $ = cheerio.load(response.data);
     const courses = [];
     
-    // Look for course boxes - try multiple approaches
+    // Use the exact working selector from legacy code
     const courseSelectors = [
-      '.courseList--coursesForTerm .courseBox', // Remove :not(.courseBox-new) to see if that helps
-      '.courseBox:not(.courseBox--add)', // Exclude "Add a course" boxes
-      '.courseBox',
-      '.course-card'
+      '.courseList--coursesForTerm .courseBox:not(.courseBox-new)' // Exact match to working implementation
     ];
     
     let courseElements = $();
@@ -239,49 +236,24 @@ async function fetchCourses(sessionCookies, filterTerm = null) {
         
         console.log(`Course ${index}: Final ID="${courseId}"`);
         
-        // Extract term information using Gradescope's HTML structure
-        let term = 'Unknown Term';
+        // Extract term using EXACT working logic from legacy code
+        let term = '';
         console.log(`Course: ${courseName} - Starting term detection...`);
         
-        // Use the working approach: find the courseList--coursesForTerm container and get term from previous sibling
+        // Use the exact working approach: closest('.courseList--coursesForTerm').prev().text().trim()
         const $courseListContainer = $el.closest('.courseList--coursesForTerm');
         if ($courseListContainer.length > 0) {
-          const termText = $courseListContainer.prev().text().trim();
+          const termText = $courseListContainer.prev().text();
           if (termText) {
-            term = termText;
+            term = termText.trim();
             console.log(`Found term "${term}" from courseList--coursesForTerm previous sibling`);
           }
         }
         
-        // Fallback to original detection if the structure-based approach fails
-        if (term === 'Unknown Term') {
-          console.log('Structure-based term detection failed, trying fallback methods...');
-          
-          // Look for term in various places
-          const termSelectors = ['.term', '.semester', '[class*="term"]', '[class*="semester"]'];
-          for (const selector of termSelectors) {
-            const termText = $el.find(selector).text().trim();
-            if (termText) {
-              term = termText;
-              console.log(`Found term "${term}" using selector "${selector}"`);
-              break;
-            }
-          }
-          
-          // If still no term found, look in parent containers
-          if (term === 'Unknown Term') {
-            let $parent = $el.parent();
-            while ($parent.length > 0 && term === 'Unknown Term') {
-              const parentText = $parent.text();
-              const termMatch = parentText.match(/(spring|summer|fall|winter)\s*20\d{2}/i);
-              if (termMatch) {
-                term = termMatch[0];
-                console.log(`Found term "${term}" in parent container`);
-                break;
-              }
-              $parent = $parent.parent();
-            }
-          }
+        // If no term found, set to empty string (like working code)
+        if (!term) {
+          term = '';
+          console.log(`No term found, setting to empty string`);
         }
         
         // Log final term detection result
