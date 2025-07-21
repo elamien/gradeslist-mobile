@@ -171,6 +171,7 @@ export async function fetchServerGradescopeAssignments(
     );
 
     console.log(`Server returned ${response.assignments.length} assignments for course ${courseId}`);
+    console.log('[DEBUG] First assignment from server:', response.assignments[0]);
 
     // Convert server response to expected format
     return response.assignments.map(assignment => {
@@ -213,7 +214,9 @@ export async function fetchServerGradescopeAssignments(
         submissions_status: assignment.status,
         grade: assignment.grade,
         points: assignment.max_grade?.toString() || null,
-        submission_id: null // Not available from server scraping
+        submission_id: null, // Not available from server scraping
+        _debug_had_due_date: assignment._debug_had_due_date, // Pass through debug info
+        _debug_raw_due_date: assignment.due_date // Pass through raw server data
       };
     });
   } catch (error) {
