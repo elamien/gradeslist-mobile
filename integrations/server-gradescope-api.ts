@@ -31,12 +31,15 @@ interface AssignmentResponse {
     id: string;
     title: string;
     due_date: string | null;
+    submissions_status: string;
     status: string;
     grade: number | null;
-    max_grade: number | null;
+    points: string | null;
+    submission_id: string | null;
     course_id: string;
     platform: string;
     url: string;
+    _debug_had_due_date: boolean;
   }>;
   courseId: string;
   count: number;
@@ -153,7 +156,7 @@ export async function fetchServerGradescopeCourses(
 }
 
 /**
- * Fetch assignments from server
+ * Fetch assignments from server using working endpoint
  */
 export async function fetchServerGradescopeAssignments(
   courseId: string,
@@ -165,7 +168,7 @@ export async function fetchServerGradescopeAssignments(
 
   try {
     const response = await makeServerRequest<AssignmentResponse>(
-      '/assignments',
+      '/assignments-working',
       credentials,
       { courseId }
     );
@@ -173,37 +176,16 @@ export async function fetchServerGradescopeAssignments(
     console.log(`Server returned ${response.assignments.length} assignments for course ${courseId}`);
     console.log('[DEBUG] First assignment from server:', response.assignments[0]);
 
-    // Convert server response to expected format
+    // Convert server response to expected format - dates already parsed by working logic
     return response.assignments.map(assignment => {
-      // Safe date parsing
+      // Dates are already properly parsed as ISO strings by the working endpoint
       let dueDate = null;
       if (assignment.due_date) {
         try {
-          console.log(`Parsing due date for ${assignment.title}: "${assignment.due_date}"`);
-          
-          // Convert Gradescope date format "2025-07-15 23:59:00 -0400" to ISO format
-          let dateString = assignment.due_date;
-          
-          // Check if it's in the format "YYYY-MM-DD HH:mm:ss -HHMM"
-          const gradescopeFormat = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) ([-+]\d{4})$/;
-          const match = dateString.match(gradescopeFormat);
-          
-          if (match) {
-            // Convert to ISO format: "YYYY-MM-DDTHH:mm:ss-HHMM"
-            const [, dateTime, timezone] = match;
-            dateString = `${dateTime.replace(' ', 'T')}${timezone.slice(0,3)}:${timezone.slice(3)}`;
-            console.log(`Converted to ISO format: "${dateString}"`);
-          }
-          
-          const parsedDate = new Date(dateString);
-          console.log(`Parsed date result: ${parsedDate}, isNaN: ${isNaN(parsedDate.getTime())}`);
-          if (!isNaN(parsedDate.getTime())) {
-            dueDate = parsedDate;
-          } else {
-            console.warn(`Date parsing failed for ${assignment.title}: "${assignment.due_date}"`);
-          }
+          dueDate = new Date(assignment.due_date);
+          console.log(`Working endpoint provided due date for ${assignment.title}: ${assignment.due_date}`);
         } catch (error) {
-          console.warn(`Invalid due date for assignment ${assignment.id}:`, assignment.due_date);
+          console.warn(`Invalid due date from working endpoint for ${assignment.id}:`, assignment.due_date);
         }
       }
       
@@ -211,12 +193,12 @@ export async function fetchServerGradescopeAssignments(
         id: assignment.id,
         title: assignment.title,
         due_date: dueDate,
-        submissions_status: assignment.status,
+        submissions_status: assignment.submissions_status,
         grade: assignment.grade,
-        points: assignment.max_grade?.toString() || null,
-        submission_id: null, // Not available from server scraping
-        _debug_had_due_date: assignment._debug_had_due_date, // Pass through debug info
-        _debug_raw_due_date: assignment.due_date // Pass through raw server data
+        points: assignment.points,
+        submission_id: assignment.submission_id || null,
+        _debug_had_due_date: assignment._debug_had_due_date,
+        _debug_raw_due_date: assignment.due_date
       };
     });
   } catch (error) {
