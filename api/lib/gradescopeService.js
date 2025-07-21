@@ -281,29 +281,54 @@ async function fetchAssignments(sessionCookies, courseId) {
         const $statusCell = $row.find('td.submissionStatus');
         const $dateCell = $row.find('td:nth-of-type(2)');
         
-        // Debug: Check what's in the date cell and all cells
-        console.log(`[DATE DEBUG] Assignment "${name}"`);
-        console.log(`[DATE DEBUG] All row cells:`, $row.find('td').map((i, el) => $(el).text().trim()).get());
-        console.log(`[DATE DEBUG] Date cell (2nd) HTML:`, $dateCell.html());
-        console.log(`[DATE DEBUG] Date cell text:`, $dateCell.text().trim());
+        // Try multiple common Gradescope date selectors
+        let dueDateElements = [];
+        let dueDate = null;
         
-        // Try multiple approaches to find due dates
-        let dueDateElements = $dateCell.find('time.submissionTimeChart--dueDate').get();
-        console.log(`[DATE DEBUG] Found ${dueDateElements.length} submissionTimeChart--dueDate elements`);
-        
+        // Method 1: Look for time elements with due date classes
+        dueDateElements = $dateCell.find('time.submissionTimeChart--dueDate').get();
         if (dueDateElements.length === 0) {
           dueDateElements = $dateCell.find('time').get();
-          console.log(`[DATE DEBUG] Found ${dueDateElements.length} time elements`);
         }
         
+        // Method 2: Look in other common cells (3rd, 4th columns)
         if (dueDateElements.length === 0) {
-          // Check all cells for time elements
+          const $thirdCell = $row.find('td:nth-of-type(3)');
+          const $fourthCell = $row.find('td:nth-of-type(4)');
+          
+          dueDateElements = $thirdCell.find('time').get();
+          if (dueDateElements.length === 0) {
+            dueDateElements = $fourthCell.find('time').get();
+          }
+        }
+        
+        // Method 3: Look for specific text patterns that might contain dates
+        if (dueDateElements.length === 0) {
+          // Look for dates in text format like "Jul 15, 2025" or "7/15/2025"
           $row.find('td').each((i, cell) => {
             const $cell = $(cell);
-            const timeElements = $cell.find('time').get();
-            if (timeElements.length > 0) {
-              console.log(`[DATE DEBUG] Found ${timeElements.length} time elements in cell ${i}:`, $cell.html());
-              dueDateElements.push(...timeElements);
+            const cellText = $cell.text().trim();
+            
+            // Common date patterns
+            const datePatterns = [
+              /\b\w{3}\s+\d{1,2},?\s+\d{4}\b/i,     // "Jul 15, 2025" or "Jul 15 2025"
+              /\b\d{1,2}\/\d{1,2}\/\d{4}\b/,        // "7/15/2025"
+              /\b\d{4}-\d{1,2}-\d{1,2}\b/,          // "2025-07-15"
+            ];
+            
+            for (const pattern of datePatterns) {
+              const match = cellText.match(pattern);
+              if (match) {
+                try {
+                  dueDate = new Date(match[0]);
+                  if (!isNaN(dueDate.getTime())) {
+                    console.log(`[REWRITTEN] Found date "${match[0]}" in cell ${i} for ${name}`);
+                    return false; // Break out of each loop
+                  }
+                } catch (e) {
+                  // Continue to next pattern
+                }
+              }
             }
           });
         }
@@ -327,8 +352,12 @@ async function fetchAssignments(sessionCookies, courseId) {
           submissions_status += ' (Late)';
         }
         
-        const dueDate = dueDateElements.length > 0 ? parseDate($, dueDateElements[0]) : null;
-        console.log(`[DATE DEBUG] Final due date for "${name}":`, dueDate);
+        // Use parsed text date if found, otherwise try time elements
+        if (!dueDate && dueDateElements.length > 0) {
+          dueDate = parseDate($, dueDateElements[0]);
+        }
+        
+        console.log(`[REWRITTEN] Final due date for "${name}":`, dueDate);
         
         const assignment = {
           id: assignment_id,
@@ -340,7 +369,9 @@ async function fetchAssignments(sessionCookies, courseId) {
           status: submissions_status,
           course_id: courseId,
           platform: 'gradescope',
-          url: `/courses/${courseId}/assignments/${assignment_id}`
+          url: `/courses/${courseId}/assignments/${assignment_id}`,
+          // Add debug info to help troubleshoot
+          _debug_had_due_date: !!dueDate
         };
         
         assignments.push(assignment);
