@@ -118,6 +118,12 @@ export async function getAssignments(
     // Filter courses to only selected ones
     const selectedCourses = allCourses.filter(course => selectedCourseIds.includes(course.id));
     
+    // Create course lookup map for quick access
+    const courseMap = new Map();
+    allCourses.forEach(course => {
+      courseMap.set(course.id, course.name);
+    });
+    
     // Fetch assignments for each selected course
     for (const course of selectedCourses) {
       try {

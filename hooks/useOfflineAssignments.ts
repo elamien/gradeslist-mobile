@@ -87,21 +87,24 @@ export function useOfflineAssignments() {
       if (!freshAssignments) return;
 
       try {
-        // Convert to StoredAssignment format
-        const storedAssignments: StoredAssignment[] = freshAssignments.map(assignment => ({
-          id: assignment.id,
-          title: assignment.title,
-          courseName: assignment.course_name || 'Unknown Course',
-          courseId: assignment.course_id || assignment.id.split('-')[0],
-          dueDate: assignment.due_date,
-          platform: assignment.platform,
-          status: assignment.status,
-          score: assignment.score,
-          maxPoints: assignment.max_points,
-          isGraded: assignment.status === 'graded',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }));
+        // Convert to StoredAssignment format with debugging
+        const storedAssignments: StoredAssignment[] = freshAssignments.map(assignment => {
+          console.log('Processing assignment:', assignment);
+          return {
+            id: assignment.id,
+            title: assignment.title,
+            courseName: assignment.course_name || assignment.courseName || 'Unknown Course',
+            courseId: assignment.course_id || assignment.courseId || assignment.id.split('-')[0],
+            dueDate: assignment.due_date || assignment.dueDate,
+            platform: assignment.platform || 'gradescope',
+            status: assignment.status || assignment.submissions_status || 'unknown',
+            score: assignment.grade || assignment.score,
+            maxPoints: assignment.max_grade || assignment.max_points || assignment.maxPoints || assignment.points,
+            isGraded: (assignment.status === 'graded') || (assignment.submissions_status === 'Graded'),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+        });
 
         // Save to SQLite
         await databaseService.saveAssignments(storedAssignments);

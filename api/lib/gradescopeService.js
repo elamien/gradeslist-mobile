@@ -306,12 +306,14 @@ async function fetchAssignments(sessionCookies, courseId) {
         const assignment = {
           id: assignment_id,
           title: name,
-          due_date: dueDate,
+          due_date: dueDate ? dueDate.toISOString() : null,
           submissions_status: submissions_status,
-          score: grade,
-          max_points: max_grade,
+          grade: grade,
+          max_grade: max_grade,
           status: submissions_status,
-          platform: 'gradescope'
+          course_id: courseId,
+          platform: 'gradescope',
+          url: `/courses/${courseId}/assignments/${assignment_id}`
         };
         
         assignments.push(assignment);
