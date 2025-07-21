@@ -296,6 +296,9 @@ async function fetchAssignments(sessionCookies, courseId) {
         const dueDateElements = $dateCell.find('time.submissionTimeChart--dueDate').get();
         
         console.log(`[REWRITTEN] Assignment "${name}" - found ${dueDateElements.length} due date elements`);
+        if (dueDateElements.length === 0) {
+          console.log(`[REWRITTEN] Date cell HTML for "${name}":`, $dateCell.html());
+        }
         
         const gradeText = $statusCell.find('.submissionStatus--score').text()?.trim() || '';
         const gradeMatch = gradeText.match(/(\d+\.?\d*)\s*\/\s*(\d+\.?\d*)/);
