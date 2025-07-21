@@ -16,6 +16,7 @@ export function useOfflineAssignments() {
     connections,
     selectedTerm,
     selectedCourseIds,
+    credentialsLoaded,
   } = useAppStore();
 
   // Local state for SQLite data (shows immediately)
@@ -24,6 +25,13 @@ export function useOfflineAssignments() {
 
   // Get connected platforms
   const connectedPlatforms = connections.filter(conn => conn.isConnected);
+  
+  console.log('Hook state:', { 
+    credentialsLoaded, 
+    connectionsCount: connections.length,
+    connectedCount: connectedPlatforms.length,
+    selectedCoursesCount: selectedCourseIds.length
+  });
   
   console.log('All connections:', connections);
   console.log('Connected platforms:', connectedPlatforms);
@@ -90,7 +98,7 @@ export function useOfflineAssignments() {
       console.log(`Fetched ${allAssignments.length} fresh assignments from APIs`);
       return allAssignments;
     },
-    enabled: connectedPlatforms.length > 0 && selectedCourseIds.length > 0,
+    enabled: credentialsLoaded && connectedPlatforms.length > 0 && selectedCourseIds.length > 0,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 24 * 60 * 60 * 1000, // 24 hours
   });
