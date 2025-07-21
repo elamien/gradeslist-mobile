@@ -268,28 +268,11 @@ export default function ProfileScreen() {
                       
                       <View style={{ 
                         flexDirection: 'row', 
-                        gap: 8, 
                         marginTop: 12,
                         paddingTop: 12,
                         borderTopWidth: 1,
                         borderTopColor: '#f3f4f6'
                       }}>
-                        <TouchableOpacity
-                          style={{
-                            flex: 1,
-                            backgroundColor: '#f8fafc',
-                            paddingVertical: 8,
-                            paddingHorizontal: 12,
-                            borderRadius: 6,
-                            borderWidth: 1,
-                            borderColor: '#e2e8f0',
-                            alignItems: 'center'
-                          }}
-                        >
-                          <Text style={{ fontSize: 12, color: '#64748b', fontWeight: '500' }}>
-                            Settings
-                          </Text>
-                        </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => handleDisconnect(connection)}
                           style={{
@@ -317,36 +300,7 @@ export default function ProfileScreen() {
             {/* Add New Platform */}
             {availableServices.length > 0 && (
               <View>
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: '#ffffff',
-                    borderRadius: 12,
-                    padding: 20,
-                    borderWidth: 2,
-                    borderColor: '#e5e5e5',
-                    borderStyle: 'dashed',
-                    alignItems: 'center',
-                    marginBottom: 16
-                  }}
-                >
-                  <View style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 24,
-                    backgroundColor: '#f3f4f6',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    marginBottom: 8
-                  }}>
-                    <MaterialIcons name="add" size={24} color="#9ca3af" />
-                  </View>
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: '#374151', marginBottom: 4 }}>
-                    Add New Platform
-                  </Text>
-                  <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center' }}>
-                    Connect another platform to sync more assignments
-                  </Text>
-                </TouchableOpacity>
+                
 
                 <View style={{ gap: 8 }}>
                   {availableServices.map((connection) => (
@@ -505,16 +459,18 @@ export default function ProfileScreen() {
                   <Switch
                     value={notificationsEnabled}
                     onValueChange={async (enabled) => {
+                      // Optimistically update the UI for instant feedback
+                      setNotificationsEnabled(enabled);
+
                       if (enabled) {
                         try {
+                          // Then, perform the async action
                           await NotificationService.initialize();
-                          setNotificationsEnabled(true);
-                          Alert.alert('Success', 'Notifications enabled!');
                         } catch (error) {
-                          Alert.alert('Error', 'Failed to enable notifications.');
+                          // If it fails, revert the state and show an error
+                          setNotificationsEnabled(false);
+                          Alert.alert('Error', 'Failed to enable notifications. The setting has been reverted.');
                         }
-                      } else {
-                        setNotificationsEnabled(false);
                       }
                     }}
                     trackColor={{ false: '#e5e5e5', true: '#3b82f6' }}
