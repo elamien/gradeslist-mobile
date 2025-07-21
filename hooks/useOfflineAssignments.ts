@@ -108,8 +108,8 @@ export function useOfflineAssignments() {
           dueDate: assignment.due_date || assignment.dueDate,
           platform: assignment.platform || 'gradescope',
           status: assignment.status || assignment.submissions_status || 'unknown',
-          score: assignment.score || assignment.grade,
-          maxPoints: assignment.max_points || assignment.maxPoints || assignment.points,
+          score: assignment.score || assignment.grade || null,
+          maxPoints: assignment.max_points || assignment.maxPoints || assignment.points || null,
           isGraded: (assignment.status === 'graded') || (assignment.submissions_status === 'Graded'),
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -172,7 +172,7 @@ export function useFilteredAssignments(filter: { isGraded: boolean }) {
     if (filter.isGraded) {
       return assignment.status === 'graded' || assignment.score !== null;
     } else {
-      return assignment.status !== 'graded' && assignment.score === null;
+      return assignment.status !== 'graded' && (assignment.score === null || assignment.score === undefined);
     }
   });
 

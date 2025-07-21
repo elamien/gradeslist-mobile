@@ -162,11 +162,14 @@ export default function GradesScreen() {
         >
           <View style={{ gap: 12 }}>
             {assignments.map((assignment) => {
-              const letterGrade = assignment.score && assignment.maxPoints 
+              const hasValidGrade = assignment.score !== null && assignment.score !== undefined && 
+                                   assignment.maxPoints !== null && assignment.maxPoints !== undefined;
+              
+              const letterGrade = hasValidGrade
                 ? calculateLetterGrade(assignment.score, assignment.maxPoints)
                 : 'N/A';
               
-              const gradeColor = assignment.score && assignment.maxPoints 
+              const gradeColor = hasValidGrade
                 ? getGradeColor(assignment.score, assignment.maxPoints)
                 : '#666';
 
@@ -199,7 +202,8 @@ export default function GradesScreen() {
                         </Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                           <Text style={{ fontSize: 15, fontWeight: '500' }}>
-                            {assignment.score !== null && assignment.maxPoints !== null
+                            {assignment.score !== null && assignment.score !== undefined && 
+                             assignment.maxPoints !== null && assignment.maxPoints !== undefined
                               ? `${assignment.score}/${assignment.maxPoints}`
                               : 'N/A'
                             }
