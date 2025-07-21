@@ -283,7 +283,8 @@ async function fetchCourses(sessionCookies, filterTerm = null) {
       }
     });
     
-    console.log(`Extracted ${courses.length} courses${filterTerm ? ` for term "${filterTerm}"` : ''}`);
+    console.log(`[NEW CODE v2] Extracted ${courses.length} courses${filterTerm ? ` for term "${filterTerm}"` : ''}`);
+    console.log(`[NEW CODE v2] Using selector: .courseList--coursesForTerm .courseBox:not(.courseBox-new)`);
     return courses;
     
   } catch (error) {
