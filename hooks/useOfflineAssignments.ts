@@ -89,8 +89,19 @@ export function useOfflineAssignments() {
       try {
         // Convert to StoredAssignment format with debugging
         const storedAssignments: StoredAssignment[] = freshAssignments.map(assignment => {
-          console.log('Processing assignment:', assignment);
-          return {
+          console.log('Processing assignment for storage:', {
+            title: assignment.title,
+            course_name: assignment.course_name,
+            courseName: assignment.courseName,
+            grade: assignment.grade,
+            score: assignment.score,
+            max_grade: assignment.max_grade,
+            max_points: assignment.max_points,
+            maxPoints: assignment.maxPoints,
+            points: assignment.points
+          });
+          
+          const processed = {
             id: assignment.id,
             title: assignment.title,
             courseName: assignment.course_name || assignment.courseName || 'Unknown Course',
@@ -104,6 +115,15 @@ export function useOfflineAssignments() {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
+          
+          console.log('Processed assignment:', {
+            title: processed.title,
+            courseName: processed.courseName,
+            score: processed.score,
+            maxPoints: processed.maxPoints
+          });
+          
+          return processed;
         });
 
         // Save to SQLite
