@@ -290,14 +290,29 @@ async function fetchAssignments(sessionCookies, courseId) {
           return;
         }
         
-        // Extract dates, status, and grades (EXACT copy from working code)
+        // Extract dates, status, and grades (BROAD search approach)
         const $statusCell = $row.find('td.submissionStatus');
         const $dateCell = $row.find('td:nth-of-type(2)');
-        const dueDateElements = $dateCell.find('time.submissionTimeChart--dueDate').get();
         
-        console.log(`[REWRITTEN] Assignment "${name}" - found ${dueDateElements.length} due date elements`);
+        // Try multiple approaches to find due dates
+        let dueDateElements = $dateCell.find('time.submissionTimeChart--dueDate').get();
+        console.log(`[REWRITTEN] Assignment "${name}" - found ${dueDateElements.length} submissionTimeChart--dueDate elements`);
+        
+        if (dueDateElements.length === 0) {
+          // Fallback 1: Any time element in date cell
+          dueDateElements = $dateCell.find('time').get();
+          console.log(`[REWRITTEN] Assignment "${name}" - found ${dueDateElements.length} time elements in date cell`);
+        }
+        
+        if (dueDateElements.length === 0) {
+          // Fallback 2: Any time element in entire row
+          dueDateElements = $row.find('time').get();
+          console.log(`[REWRITTEN] Assignment "${name}" - found ${dueDateElements.length} time elements in entire row`);
+        }
+        
         if (dueDateElements.length === 0) {
           console.log(`[REWRITTEN] Date cell HTML for "${name}":`, $dateCell.html());
+          console.log(`[REWRITTEN] Entire row HTML for "${name}":`, $row.html());
         }
         
         const gradeText = $statusCell.find('.submissionStatus--score').text()?.trim() || '';
