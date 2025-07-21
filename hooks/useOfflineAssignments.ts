@@ -90,55 +90,37 @@ export function useOfflineAssignments() {
     gcTime: 24 * 60 * 60 * 1000, // 24 hours
   });
 
+  // Local state for processed assignments 
+  const [processedAssignments, setProcessedAssignments] = useState<StoredAssignment[]>([]);
+
   // Save fresh data to SQLite when it arrives
   useEffect(() => {
     const saveFreshData = async () => {
       if (!freshAssignments) return;
 
       try {
-        // Convert to StoredAssignment format with debugging
-        const storedAssignments: StoredAssignment[] = freshAssignments.map(assignment => {
-          console.log('[HOOK DEBUG] Raw assignment received:', {
-            title: assignment.title,
-            course_name: assignment.course_name,
-            courseName: assignment.courseName,
-            due_date: assignment.due_date,
-            dueDate: assignment.dueDate,
-            score: assignment.score,
-            max_points: assignment.max_points
-          });
-          
-          const processed = {
-            id: assignment.id,
-            title: assignment.title,
-            courseName: assignment.course_name || assignment.courseName || 'Unknown Course',
-            courseId: assignment.course_id || assignment.courseId || assignment.id.split('-')[0],
-            dueDate: assignment.due_date || assignment.dueDate,
-            platform: assignment.platform || 'gradescope',
-            status: assignment.status || assignment.submissions_status || 'unknown',
-            score: assignment.score || assignment.grade,
-            maxPoints: assignment.max_points || assignment.maxPoints || assignment.points,
-            isGraded: (assignment.status === 'graded') || (assignment.submissions_status === 'Graded'),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          
-          console.log('[HOOK DEBUG] Processed assignment:', {
-            title: processed.title,
-            courseName: processed.courseName,
-            dueDate: processed.dueDate,
-            score: processed.score,
-            maxPoints: processed.maxPoints
-          });
-          
-          return processed;
-        });
+        // Convert to StoredAssignment format
+        const storedAssignments: StoredAssignment[] = freshAssignments.map(assignment => ({
+          id: assignment.id,
+          title: assignment.title,
+          courseName: assignment.course_name || assignment.courseName || 'Unknown Course',
+          courseId: assignment.course_id || assignment.courseId || assignment.id.split('-')[0],
+          dueDate: assignment.due_date || assignment.dueDate,
+          platform: assignment.platform || 'gradescope',
+          status: assignment.status || assignment.submissions_status || 'unknown',
+          score: assignment.score || assignment.grade,
+          maxPoints: assignment.max_points || assignment.maxPoints || assignment.points,
+          isGraded: (assignment.status === 'graded') || (assignment.submissions_status === 'Graded'),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }));
 
         // Save to SQLite
         await databaseService.saveAssignments(storedAssignments);
         
-        // Update cached state
+        // Update both cached and processed state
         setCachedAssignments(storedAssignments);
+        setProcessedAssignments(storedAssignments);
         
         console.log(`Saved ${storedAssignments.length} assignments to SQLite`);
       } catch (error) {
@@ -149,21 +131,12 @@ export function useOfflineAssignments() {
     saveFreshData();
   }, [freshAssignments]);
 
-  // Return offline-first data
-  console.log('Hook returning data:', {
-    freshCount: freshAssignments?.length || 0,
-    cachedCount: cachedAssignments.length,
-    usingFresh: !!freshAssignments,
-    sampleAssignment: (freshAssignments || cachedAssignments)[0] ? {
-      title: (freshAssignments || cachedAssignments)[0].title,
-      courseName: (freshAssignments || cachedAssignments)[0].courseName,
-      score: (freshAssignments || cachedAssignments)[0].score
-    } : null
-  });
+  // Return offline-first data - use processed assignments when available
+  const finalAssignments = processedAssignments.length > 0 ? processedAssignments : cachedAssignments;
   
   return {
-    // Data: Use fresh data if available, fallback to cached
-    assignments: freshAssignments || cachedAssignments,
+    // Data: Use processed data if available, fallback to cached
+    assignments: finalAssignments,
     
     // Loading states
     isLoading: !cacheLoaded, // Only show loading spinner if cache not loaded yet
@@ -183,7 +156,8 @@ export function useOfflineAssignments() {
     stats: {
       cached: cachedAssignments.length,
       fresh: freshAssignments?.length || 0,
-      usingCache: !freshAssignments && cachedAssignments.length > 0,
+      processed: processedAssignments.length,
+      usingCache: processedAssignments.length === 0 && cachedAssignments.length > 0,
     },
   };
 }
