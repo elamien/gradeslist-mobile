@@ -51,7 +51,6 @@ export async function getGradescopeAssignments(
     const gradescopeAssignments = await fetchGradescopeAssignments(courseId, credentials);
     return mapGradescopeAssignmentsToUniversal(gradescopeAssignments).map(assignment => ({
       ...assignment,
-      course_name: `Course ${courseId}`, // Would be enriched with actual course name
       platform: 'gradescope' as const
     }));
   } catch (error) {
