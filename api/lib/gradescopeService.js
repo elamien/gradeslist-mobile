@@ -308,9 +308,10 @@ async function fetchAssignments(sessionCookies, courseId) {
           title: name,
           due_date: dueDate,
           submissions_status: submissions_status,
-          grade: grade,
-          points: max_grade?.toString() || null,
-          status: submissions_status
+          score: grade,
+          max_points: max_grade,
+          status: submissions_status,
+          platform: 'gradescope'
         };
         
         assignments.push(assignment);
