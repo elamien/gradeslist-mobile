@@ -128,6 +128,17 @@ export function useOfflineAssignments() {
   }, [freshAssignments]);
 
   // Return offline-first data
+  console.log('Hook returning data:', {
+    freshCount: freshAssignments?.length || 0,
+    cachedCount: cachedAssignments.length,
+    usingFresh: !!freshAssignments,
+    sampleAssignment: (freshAssignments || cachedAssignments)[0] ? {
+      title: (freshAssignments || cachedAssignments)[0].title,
+      courseName: (freshAssignments || cachedAssignments)[0].courseName,
+      score: (freshAssignments || cachedAssignments)[0].score
+    } : null
+  });
+  
   return {
     // Data: Use fresh data if available, fallback to cached
     assignments: freshAssignments || cachedAssignments,
@@ -168,6 +179,17 @@ export function useFilteredAssignments(filter: { isGraded: boolean }) {
       return assignment.status !== 'graded' && assignment.score === null;
     }
   });
+
+  // Debug: Log what we're returning to the UI
+  if (!filter.isGraded && filteredAssignments.length > 0) {
+    console.log('Due assignments being returned:', filteredAssignments.slice(0, 3).map(a => ({
+      title: a.title,
+      courseName: a.courseName,
+      dueDate: a.dueDate,
+      score: a.score,
+      status: a.status
+    })));
+  }
 
   return {
     assignments: filteredAssignments,
