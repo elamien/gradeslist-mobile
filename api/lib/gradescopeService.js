@@ -334,7 +334,44 @@ async function fetchAssignments(sessionCookies, courseId) {
           submissions_status += ' (Late)';
         }
         
-        const dueDate = dueDateElements.length > 0 ? parseDate($, dueDateElements[0]) : null;
+        let dueDate = null;
+        
+        // Method 1: Try parsing from time elements
+        if (dueDateElements.length > 0) {
+          dueDate = parseDate($, dueDateElements[0]);
+        }
+        
+        // Method 2: Text-based date extraction from entire row
+        if (!dueDate) {
+          const rowText = $row.text().trim();
+          console.log(`[REWRITTEN] Searching for dates in row text: "${rowText}"`);
+          
+          // Look for common date patterns in the text
+          const datePatterns = [
+            /\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g,           // "7/15/2025"
+            /\b(\w{3})\s+(\d{1,2}),?\s+(\d{4})\b/g,        // "Jul 15, 2025"
+            /\b(\d{4})-(\d{1,2})-(\d{1,2})\b/g,           // "2025-07-15"
+            /\b(\w{3})\s+(\d{1,2})\s+at\s+\d{1,2}:\d{2}(am|pm)\b/gi, // "Jul 15 at 11:59pm"
+          ];
+          
+          for (const pattern of datePatterns) {
+            const matches = [...rowText.matchAll(pattern)];
+            for (const match of matches) {
+              try {
+                const dateStr = match[0];
+                const testDate = new Date(dateStr);
+                if (!isNaN(testDate.getTime()) && testDate.getFullYear() > 2020) {
+                  console.log(`[REWRITTEN] Found text date "${dateStr}" for ${name}`);
+                  dueDate = testDate;
+                  break;
+                }
+              } catch (e) {
+                // Continue to next match
+              }
+            }
+            if (dueDate) break;
+          }
+        }
         
         console.log(`[REWRITTEN] Final due date for "${name}":`, dueDate);
         
