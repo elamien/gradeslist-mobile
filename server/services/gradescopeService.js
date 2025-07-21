@@ -239,8 +239,9 @@ async function fetchCourses(sessionCookies, filterTerm = null) {
         
         console.log(`Course ${index}: Final ID="${courseId}"`);
         
-        // Extract term information
+        // Extract term information with detailed logging
         let term = 'Unknown Term';
+        console.log(`Course: ${courseName} - Starting term detection...`);
         
         // Look for term in various places
         const termSelectors = ['.term', '.semester', '[class*="term"]', '[class*="semester"]'];
@@ -248,6 +249,7 @@ async function fetchCourses(sessionCookies, filterTerm = null) {
           const termText = $el.find(selector).text().trim();
           if (termText) {
             term = termText;
+            console.log(`Found term "${term}" using selector "${selector}"`);
             break;
           }
         }
@@ -260,11 +262,15 @@ async function fetchCourses(sessionCookies, filterTerm = null) {
             const termMatch = parentText.match(/(spring|summer|fall|winter)\s*20\d{2}/i);
             if (termMatch) {
               term = termMatch[0];
+              console.log(`Found term "${term}" in parent container`);
               break;
             }
             $parent = $parent.parent();
           }
         }
+        
+        // Log final term detection result
+        console.log(`Course: ${courseName} - Final detected term: "${term}"`);
         
         if (courseName && courseId) {
           const course = {
@@ -276,8 +282,13 @@ async function fetchCourses(sessionCookies, filterTerm = null) {
           };
           
           // Filter by term if specified
-          if (!filterTerm || term.toLowerCase().includes(filterTerm.toLowerCase())) {
+          const shouldInclude = !filterTerm || term.toLowerCase().includes(filterTerm.toLowerCase());
+          console.log(`Course: ${courseName} - Term filter check: term="${term}", filterTerm="${filterTerm}", shouldInclude=${shouldInclude}`);
+          
+          if (shouldInclude) {
             courses.push(course);
+          } else {
+            console.log(`Course: ${courseName} - EXCLUDED by term filter`);
           }
         }
       } catch (error) {

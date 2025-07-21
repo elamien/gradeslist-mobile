@@ -2,7 +2,11 @@
 // This provides a unified interface for both Canvas and Gradescope APIs
 
 import { fetchCanvasCourses, fetchCanvasAssignments, testCanvasConnection } from './mobile-canvas-api';
-import { fetchGradescopeCourses, fetchGradescopeAssignments, testGradescopeConnection } from './mobile-gradescope-api';
+import { 
+  fetchServerGradescopeCourses as fetchGradescopeCourses, 
+  fetchServerGradescopeAssignments as fetchGradescopeAssignments, 
+  testServerGradescopeConnection as testGradescopeConnection 
+} from './server-gradescope-api';
 import { 
   mapCanvasAssignmentsToUniversal, 
   mapCanvasCoursesToUniversal,
