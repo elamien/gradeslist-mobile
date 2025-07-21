@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.elamien.gradeslistmobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -43,13 +47,14 @@
         }
       ]
     ],
-    "extra": {
-      "eas": {
-        "projectId": "gradeslist-mobile"
-      }
-    },
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d10dfffe-c74a-477b-872f-65db3c0c7e26"
+      }
     }
   }
 }

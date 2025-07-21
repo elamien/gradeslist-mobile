@@ -37,3 +37,6 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+gradeslistmobile.app/
+build-*.tar.gz
+*.debug.dylib

@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useGradedAssignments } from '../../hooks/useAssignments';
+import { useFilteredAssignments } from '../../hooks/useOfflineAssignments';
 import { useAppStore } from '../../store/useAppStore';
 import { useCallback } from 'react';
 
@@ -31,7 +31,7 @@ function calculateLetterGrade(score: number, maxPoints: number): string {
 
 export default function GradesScreen() {
   const { connections, selectedCourseIds } = useAppStore();
-  const { data: assignments, isLoading, error, refetch } = useGradedAssignments();
+  const { assignments, isLoading, isFetching, error, refetch, hasCachedData, stats } = useFilteredAssignments({ isGraded: true });
   const connectedPlatforms = connections.filter(conn => conn.isConnected);
 
   const onRefresh = useCallback(() => {
@@ -47,7 +47,7 @@ export default function GradesScreen() {
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
             <ActivityIndicator size="large" color="#3B82F6" />
             <Text style={{ marginTop: 16, fontSize: 16, color: '#666' }}>
-              Loading grades...
+              {hasCachedData ? 'Refreshing grades...' : 'Loading grades...'}
             </Text>
           </View>
         </View>
@@ -133,7 +133,7 @@ export default function GradesScreen() {
           <Text style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 16 }}>Grades</Text>
           <ScrollView
             refreshControl={
-              <RefreshControl refreshing={isLoading} onRefresh={onRefresh} />
+              <RefreshControl refreshing={isFetching} onRefresh={onRefresh} />
             }
           >
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 }}>
@@ -157,17 +157,17 @@ export default function GradesScreen() {
         <ScrollView 
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={isLoading} onRefresh={onRefresh} />
+            <RefreshControl refreshing={isFetching} onRefresh={onRefresh} />
           }
         >
           <View style={{ gap: 12 }}>
             {assignments.map((assignment) => {
-              const letterGrade = assignment.score && assignment.max_points 
-                ? calculateLetterGrade(assignment.score, assignment.max_points)
+              const letterGrade = assignment.score && assignment.maxPoints 
+                ? calculateLetterGrade(assignment.score, assignment.maxPoints)
                 : 'N/A';
               
-              const gradeColor = assignment.score && assignment.max_points 
-                ? getGradeColor(assignment.score, assignment.max_points)
+              const gradeColor = assignment.score && assignment.maxPoints 
+                ? getGradeColor(assignment.score, assignment.maxPoints)
                 : '#666';
 
               return (
@@ -195,12 +195,12 @@ export default function GradesScreen() {
                       </Text>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Text style={{ fontSize: 14, color: '#666' }}>
-                          {assignment.course_name || 'Unknown Course'}
+                          {assignment.courseName || 'Unknown Course'}
                         </Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                           <Text style={{ fontSize: 15, fontWeight: '500' }}>
-                            {assignment.score !== null && assignment.max_points !== null
-                              ? `${assignment.score}/${assignment.max_points}`
+                            {assignment.score !== null && assignment.maxPoints !== null
+                              ? `${assignment.score}/${assignment.maxPoints}`
                               : 'N/A'
                             }
                           </Text>

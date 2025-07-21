@@ -1,13 +1,13 @@
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useDueAssignments } from '../../hooks/useAssignments';
+import { useFilteredAssignments } from '../../hooks/useOfflineAssignments';
 import { useAppStore } from '../../store/useAppStore';
 import { useCallback } from 'react';
 import { formatDate } from '../../utils/dateUtils';
 
 export default function DueScreen() {
   const { connections, selectedCourseIds } = useAppStore();
-  const { data: assignments, isLoading, error, refetch } = useDueAssignments();
+  const { assignments, isLoading, isFetching, error, refetch, hasCachedData, stats } = useFilteredAssignments({ isGraded: false });
   const connectedPlatforms = connections.filter(conn => conn.isConnected);
 
   const onRefresh = useCallback(() => {
@@ -23,7 +23,7 @@ export default function DueScreen() {
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
             <ActivityIndicator size="large" color="#3B82F6" />
             <Text style={{ marginTop: 16, fontSize: 16, color: '#666' }}>
-              Loading assignments...
+              {hasCachedData ? 'Refreshing assignments...' : 'Loading assignments...'}
             </Text>
           </View>
         </View>
@@ -109,7 +109,7 @@ export default function DueScreen() {
           <Text style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 16 }}>Due Tasks</Text>
           <ScrollView
             refreshControl={
-              <RefreshControl refreshing={isLoading} onRefresh={onRefresh} />
+              <RefreshControl refreshing={isFetching} onRefresh={onRefresh} />
             }
           >
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 }}>
@@ -133,7 +133,7 @@ export default function DueScreen() {
         <ScrollView 
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={isLoading} onRefresh={onRefresh} />
+            <RefreshControl refreshing={isFetching} onRefresh={onRefresh} />
           }
         >
           <View style={{ gap: 12 }}>
@@ -160,10 +160,10 @@ export default function DueScreen() {
                   </Text>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text style={{ fontSize: 14, color: '#666' }}>
-                      {assignment.course_name || 'Unknown Course'}
+                      {assignment.courseName || 'Unknown Course'}
                     </Text>
                     <Text style={{ fontSize: 14, color: '#dc2626' }}>
-                      {assignment.due_date ? formatDate(assignment.due_date) : 'No date'}
+                      {assignment.dueDate ? formatDate(assignment.dueDate) : 'No date'}
                     </Text>
                   </View>
                 </View>

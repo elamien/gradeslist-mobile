@@ -129,6 +129,7 @@ export async function fetchServerGradescopeCourses(
     );
 
     console.log(`Server returned ${response.courses.length} courses`);
+    console.log('Course details from server:', response.courses.map(c => `${c.name} - ${c.term}`));
 
     // Convert server response to expected format
     const result: GradescopeCourseList = {

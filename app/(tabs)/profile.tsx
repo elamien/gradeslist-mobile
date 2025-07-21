@@ -3,7 +3,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useCourses } from '../../hooks/useCourses';
-import { GradescopeLogin } from '../../components/GradescopeLogin';
 import { GradescopeWebViewProxy, GradescopeProxyMethods } from '../../components/GradescopeWebViewProxy';
 import { setGradescopeProxy, clearGradescopeProxy } from '../../utils/proxyRegistry';
 import { NotificationService } from '../../services/notificationService';
@@ -38,9 +37,7 @@ export default function ProfileScreen() {
   const { data: availableCourses, isLoading: coursesLoading, refetch: refetchCourses } = useCourses();
   
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [showGradescopeLogin, setShowGradescopeLogin] = useState(false);
   const [showGradescopeCredentialsModal, setShowGradescopeCredentialsModal] = useState(false);
-  const [gradescopeProxyReady, setGradescopeProxyReady] = useState(false);
   
   const [gradescopeEmail, setGradescopeEmail] = useState('');
   const [gradescopePassword, setGradescopePassword] = useState('');
@@ -76,60 +73,18 @@ export default function ProfileScreen() {
     try {
       console.log('handleConnect called with:', connection);
       setSelectedConnection(connection);
-      if (connection.id === 'gradescope') {
-        console.log('Opening Gradescope login modal');
-        setShowGradescopeLogin(true);
-      } else {
-        setUsername('');
-        setPassword('');
-        setShowPassword(false);
-        setShowLoginModal(true);
-      }
+      // Always show credential collection modal (no more WebView step)
+      setUsername('');
+      setPassword('');
+      setShowPassword(connection.id !== 'canvas'); // Show password except for Canvas
+      setShowLoginModal(true);
     } catch (error) {
       console.error('Error in handleConnect:', error);
       Alert.alert('Error', 'Failed to open connection dialog');
     }
   };
 
-  const handleGradescopeLoginSuccess = async (loginData: any) => {
-    setShowGradescopeLogin(false);
-    setIsConnecting(true);
-    try {
-      console.log('Gradescope login successful:', loginData);
-      
-      // Show a prompt to get the user's actual credentials for server-based auth
-      Alert.alert(
-        'Enter Credentials', 
-        'To fetch your real courses, please enter your Gradescope credentials. These will be sent securely to our server.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Enter Credentials',
-            onPress: () => {
-              // Show a credential input modal
-              setShowGradescopeCredentialsModal(true);
-            }
-          }
-        ]
-      );
-    } catch (error) {
-      console.error('Gradescope connection error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to Gradescope';
-      Alert.alert('Connection Failed', errorMessage);
-      setGradescopeProxyReady(false);
-    } finally {
-      setIsConnecting(false);
-    }
-  };
 
-  const handleGradescopeLoginFailure = () => {
-    setShowGradescopeLogin(false);
-    Alert.alert(
-      'Login Failed',
-      'Could not extract session information. This can happen if Gradescope uses secure HttpOnly cookies. The session cookie cannot be accessed by the app for security reasons.',
-      [{ text: 'OK' }]
-    );
-  };
 
   const handleGradescopeCredentialsSubmit = async () => {
     if (!gradescopeEmail.trim() || !gradescopePassword.trim()) {
@@ -138,12 +93,10 @@ export default function ProfileScreen() {
     }
 
     setIsConnecting(true);
-    setShowGradescopeCredentialsModal(false);
 
     try {
       console.log('Connecting Gradescope with server-based credentials...');
       
-      setGradescopeProxyReady(true);
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       
       // Store real credentials for server-based auth
@@ -157,17 +110,17 @@ export default function ProfileScreen() {
         lastLogin: new Date().toISOString()
       });
 
-      Alert.alert('Success', 'Successfully connected to Gradescope via server!');
-      
-      // Clear form
+      // Close modal and clear form on success
+      setShowGradescopeCredentialsModal(false);
       setGradescopeEmail('');
       setGradescopePassword('');
+      
+      Alert.alert('Success', 'Successfully connected to Gradescope via server!');
       
     } catch (error) {
       console.error('Gradescope server connection error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to connect to Gradescope server';
       Alert.alert('Connection Failed', errorMessage);
-      setGradescopeProxyReady(false);
     } finally {
       setIsConnecting(false);
     }
@@ -233,10 +186,11 @@ export default function ProfileScreen() {
         
       await connectPlatform(selectedConnection!.id, credentials);
       
-      // Clear form
+      // Clear form and close modal
       setUsername('');
       setPassword('');
       setShowPassword(false);
+      setShowLoginModal(false);
       
       Alert.alert('Success', `Successfully connected to ${selectedConnection!.name}!`);
     } catch (error) {
@@ -1126,21 +1080,6 @@ export default function ProfileScreen() {
             </View>
           </View>
         </View>
-      </Modal>
-      <Modal
-        visible={showGradescopeLogin}
-        animationType="slide"
-        onRequestClose={() => setShowGradescopeLogin(false)}
-      >
-        <SafeAreaView style={{ flex: 1 }}>
-          <GradescopeLogin onLoginSuccess={handleGradescopeLoginSuccess} onLoginFailure={handleGradescopeLoginFailure} />
-          <TouchableOpacity
-            style={{ padding: 16, backgroundColor: '#f3f4f6', alignItems: 'center' }}
-            onPress={() => setShowGradescopeLogin(false)}
-          >
-            <Text style={{ fontSize: 16, fontWeight: '500', color: '#666' }}>Cancel</Text>
-          </TouchableOpacity>
-        </SafeAreaView>
       </Modal>
 
       {/* Gradescope Credentials Modal */}

@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { initializeCredentials } from '../store/useAppStore';
 import { NotificationService } from '../services/notificationService';
+import { databaseService } from '../services/databaseService';
 
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient({
@@ -27,15 +28,21 @@ export default function RootLayout() {
     },
   }));
 
-  // Initialize credentials and notifications when app starts
+  // Initialize credentials, database, and notifications when app starts
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Initialize credentials first
+        // Initialize database first
+        await databaseService.initialize();
+        console.log('Database initialized');
+        
+        // Initialize credentials
         await initializeCredentials();
+        console.log('Credentials initialized');
         
         // Set up notification listeners (don't auto-enable notifications)
         NotificationService.setupNotificationListeners();
+        console.log('Notification service initialized');
         
         console.log('App initialization complete');
       } catch (error) {
