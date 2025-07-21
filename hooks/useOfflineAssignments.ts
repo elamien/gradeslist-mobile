@@ -96,21 +96,43 @@ export function useOfflineAssignments() {
       if (!freshAssignments) return;
 
       try {
-        // Convert to StoredAssignment format
-        const storedAssignments: StoredAssignment[] = freshAssignments.map(assignment => ({
-          id: assignment.id,
-          title: assignment.title,
-          courseName: assignment.course_name || assignment.courseName || 'Unknown Course',
-          courseId: assignment.course_id || assignment.courseId || assignment.id.split('-')[0],
-          dueDate: assignment.due_date || assignment.dueDate,
-          platform: assignment.platform || 'gradescope',
-          status: assignment.status || assignment.submissions_status || 'unknown',
-          score: assignment.score || assignment.grade,
-          maxPoints: assignment.max_points || assignment.maxPoints || assignment.points,
-          isGraded: (assignment.status === 'graded') || (assignment.submissions_status === 'Graded'),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }));
+        // Convert to StoredAssignment format with debugging
+        const storedAssignments: StoredAssignment[] = freshAssignments.map(assignment => {
+          console.log('[HOOK DEBUG] Raw assignment received:', {
+            title: assignment.title,
+            course_name: assignment.course_name,
+            courseName: assignment.courseName,
+            due_date: assignment.due_date,
+            dueDate: assignment.dueDate,
+            score: assignment.score,
+            max_points: assignment.max_points
+          });
+          
+          const processed = {
+            id: assignment.id,
+            title: assignment.title,
+            courseName: assignment.course_name || assignment.courseName || 'Unknown Course',
+            courseId: assignment.course_id || assignment.courseId || assignment.id.split('-')[0],
+            dueDate: assignment.due_date || assignment.dueDate,
+            platform: assignment.platform || 'gradescope',
+            status: assignment.status || assignment.submissions_status || 'unknown',
+            score: assignment.score || assignment.grade,
+            maxPoints: assignment.max_points || assignment.maxPoints || assignment.points,
+            isGraded: (assignment.status === 'graded') || (assignment.submissions_status === 'Graded'),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          
+          console.log('[HOOK DEBUG] Processed assignment:', {
+            title: processed.title,
+            courseName: processed.courseName,
+            dueDate: processed.dueDate,
+            score: processed.score,
+            maxPoints: processed.maxPoints
+          });
+          
+          return processed;
+        });
 
         // Save to SQLite
         await databaseService.saveAssignments(storedAssignments);
