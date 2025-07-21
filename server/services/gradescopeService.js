@@ -152,12 +152,12 @@ async function fetchCourses(sessionCookies, filterTerm = null) {
     const $ = cheerio.load(response.data);
     const courses = [];
     
-    // Look for course boxes - prioritize the structure-aware selector
+    // Look for course boxes - try multiple approaches
     const courseSelectors = [
-      '.courseList--coursesForTerm .courseBox:not(.courseBox-new)', // Use working approach first
+      '.courseList--coursesForTerm .courseBox', // Remove :not(.courseBox-new) to see if that helps
+      '.courseBox:not(.courseBox--add)', // Exclude "Add a course" boxes
       '.courseBox',
-      '.course-card', 
-      '[class*="course"]:not(.courseList)'
+      '.course-card'
     ];
     
     let courseElements = $();
