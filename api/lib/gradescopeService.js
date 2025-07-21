@@ -280,7 +280,33 @@ async function fetchAssignments(sessionCookies, courseId) {
         // Extract dates, status, and grades (copied from working code)
         const $statusCell = $row.find('td.submissionStatus');
         const $dateCell = $row.find('td:nth-of-type(2)');
-        const dueDateElements = $dateCell.find('time.submissionTimeChart--dueDate').get();
+        
+        // Debug: Check what's in the date cell and all cells
+        console.log(`[DATE DEBUG] Assignment "${name}"`);
+        console.log(`[DATE DEBUG] All row cells:`, $row.find('td').map((i, el) => $(el).text().trim()).get());
+        console.log(`[DATE DEBUG] Date cell (2nd) HTML:`, $dateCell.html());
+        console.log(`[DATE DEBUG] Date cell text:`, $dateCell.text().trim());
+        
+        // Try multiple approaches to find due dates
+        let dueDateElements = $dateCell.find('time.submissionTimeChart--dueDate').get();
+        console.log(`[DATE DEBUG] Found ${dueDateElements.length} submissionTimeChart--dueDate elements`);
+        
+        if (dueDateElements.length === 0) {
+          dueDateElements = $dateCell.find('time').get();
+          console.log(`[DATE DEBUG] Found ${dueDateElements.length} time elements`);
+        }
+        
+        if (dueDateElements.length === 0) {
+          // Check all cells for time elements
+          $row.find('td').each((i, cell) => {
+            const $cell = $(cell);
+            const timeElements = $cell.find('time').get();
+            if (timeElements.length > 0) {
+              console.log(`[DATE DEBUG] Found ${timeElements.length} time elements in cell ${i}:`, $cell.html());
+              dueDateElements.push(...timeElements);
+            }
+          });
+        }
         
         const gradeText = $statusCell.find('.submissionStatus--score').text()?.trim() || '';
         const gradeMatch = gradeText.match(/(\d+\.?\d*)\s*\/\s*(\d+\.?\d*)/);
@@ -302,6 +328,7 @@ async function fetchAssignments(sessionCookies, courseId) {
         }
         
         const dueDate = dueDateElements.length > 0 ? parseDate($, dueDateElements[0]) : null;
+        console.log(`[DATE DEBUG] Final due date for "${name}":`, dueDate);
         
         const assignment = {
           id: assignment_id,
