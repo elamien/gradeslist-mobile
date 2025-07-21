@@ -184,7 +184,7 @@ async function authenticateGradescope(email, password) {
 }
 
 /**
- * Parse date from Gradescope elements (copied from working code)
+ * Parse date from Gradescope elements (copied exactly from working code)
  */
 function parseDate($, element) {
   if (!element) {
@@ -193,39 +193,52 @@ function parseDate($, element) {
   
   const $element = $(element);
   
-  // Try parsing the datetime attribute
+  // Try parsing the datetime attribute (EXACT copy from working code)
   const datetimeAttr = $element.attr('datetime');
   if (datetimeAttr) {
     try {
+      console.log(`[REWRITTEN] Found datetime attribute: "${datetimeAttr}"`);
       const isoString = datetimeAttr.replace(/ ([-+])/, 'T$1');
+      console.log(`[REWRITTEN] Converted to ISO: "${isoString}"`);
       const parsed = new Date(isoString);
       if (!isNaN(parsed.getTime())) {
+        console.log(`[REWRITTEN] Successfully parsed datetime: ${parsed}`);
         return parsed;
       }
     } catch (e) {
-      // Ignore parsing errors, try next method
+      console.log(`[REWRITTEN] Error parsing datetime: ${e.message}`);
     }
   }
   
-  // Fallback to parsing the human-readable text
+  // Fallback to parsing the human-readable text (EXACT copy from working code)
   const dateText = $element.text()?.trim();
   if (dateText) {
+    console.log(`[REWRITTEN] Trying to parse text: "${dateText}"`);
     try {
       if (dateText.startsWith('Late Due Date: ')) {
-        const cleanText = dateText.substring('Late Due Date: '.length);
-        const parsed = new Date(cleanText);
-        if (!isNaN(parsed.getTime())) {
-          return parsed;
+        dateText = dateText.substring('Late Due Date: '.length);
+      }
+      
+      // Try specific Gradescope formats that working code uses
+      const formatPatterns = [
+        // Common formats from working code
+        /^(\w{3})\s+(\d{1,2})\s+at\s+(\d{1,2}):(\d{2})(am|pm)$/i, // "Jul 15 at 11:59pm"
+        /^(\w{3})\s+(\d{1,2}),?\s+(\d{4})$/i,                     // "Jul 15, 2025" or "Jul 15 2025"
+        /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/,                        // "7/15/2025"
+      ];
+      
+      for (const pattern of formatPatterns) {
+        if (pattern.test(dateText)) {
+          const parsed = new Date(dateText);
+          if (!isNaN(parsed.getTime())) {
+            console.log(`[REWRITTEN] Successfully parsed text date: ${parsed}`);
+            return parsed;
+          }
         }
       }
       
-      // Try direct parsing
-      const parsed = new Date(dateText);
-      if (!isNaN(parsed.getTime())) {
-        return parsed;
-      }
     } catch (e) {
-      // Ignore parsing errors
+      console.log(`[REWRITTEN] Error parsing date text: ${e.message}`);
     }
   }
   
