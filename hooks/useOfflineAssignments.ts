@@ -26,15 +26,8 @@ export function useOfflineAssignments() {
   // Get connected platforms
   const connectedPlatforms = connections.filter(conn => conn.isConnected);
   
-  console.log('Hook state:', { 
-    credentialsLoaded, 
-    connectionsCount: connections.length,
-    connectedCount: connectedPlatforms.length,
-    selectedCoursesCount: selectedCourseIds.length
-  });
-  
-  console.log('All connections:', connections);
-  console.log('Connected platforms:', connectedPlatforms);
+  // Debug: Only log if needed
+  // console.log('Hook state:', { credentialsLoaded, connectedCount: connectedPlatforms.length });
 
   // Load cached assignments from SQLite on mount
   useEffect(() => {
@@ -71,12 +64,6 @@ export function useOfflineAssignments() {
       // Fetch from each connected platform
       for (const connection of connectedPlatforms) {
         try {
-          console.log(`Connection details for ${connection.id}:`, {
-            isConnected: connection.isConnected,
-            hasCredentials: !!connection.credentials,
-            credentials: connection.credentials ? 'present' : 'missing'
-          });
-          
           if (!connection.credentials) {
             console.error(`No credentials found for ${connection.id}`);
             continue;
@@ -109,44 +96,21 @@ export function useOfflineAssignments() {
       if (!freshAssignments) return;
 
       try {
-        // Convert to StoredAssignment format with debugging
-        const storedAssignments: StoredAssignment[] = freshAssignments.map(assignment => {
-          console.log('Processing assignment for storage:', {
-            title: assignment.title,
-            course_name: assignment.course_name,
-            courseName: assignment.courseName,
-            grade: assignment.grade,
-            score: assignment.score,
-            max_grade: assignment.max_grade,
-            max_points: assignment.max_points,
-            maxPoints: assignment.maxPoints,
-            points: assignment.points
-          });
-          
-          const processed = {
-            id: assignment.id,
-            title: assignment.title,
-            courseName: assignment.course_name || assignment.courseName || 'Unknown Course',
-            courseId: assignment.course_id || assignment.courseId || assignment.id.split('-')[0],
-            dueDate: assignment.due_date || assignment.dueDate,
-            platform: assignment.platform || 'gradescope',
-            status: assignment.status || assignment.submissions_status || 'unknown',
-            score: assignment.grade || assignment.score,
-            maxPoints: assignment.max_grade || assignment.max_points || assignment.maxPoints || assignment.points,
-            isGraded: (assignment.status === 'graded') || (assignment.submissions_status === 'Graded'),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          
-          console.log('Processed assignment:', {
-            title: processed.title,
-            courseName: processed.courseName,
-            score: processed.score,
-            maxPoints: processed.maxPoints
-          });
-          
-          return processed;
-        });
+        // Convert to StoredAssignment format
+        const storedAssignments: StoredAssignment[] = freshAssignments.map(assignment => ({
+          id: assignment.id,
+          title: assignment.title,
+          courseName: assignment.course_name || assignment.courseName || 'Unknown Course',
+          courseId: assignment.course_id || assignment.courseId || assignment.id.split('-')[0],
+          dueDate: assignment.due_date || assignment.dueDate,
+          platform: assignment.platform || 'gradescope',
+          status: assignment.status || assignment.submissions_status || 'unknown',
+          score: assignment.grade || assignment.score,
+          maxPoints: assignment.max_grade || assignment.max_points || assignment.maxPoints || assignment.points,
+          isGraded: (assignment.status === 'graded') || (assignment.submissions_status === 'Graded'),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }));
 
         // Save to SQLite
         await databaseService.saveAssignments(storedAssignments);

@@ -250,25 +250,14 @@ export const useAppStore = create<AppState>()(
 export const initializeCredentials = async () => {
   const { connections, updateConnection } = useAppStore.getState();
   
-  console.log('Initializing credentials for connections:', connections.map(c => ({ 
-    id: c.id, 
-    isConnected: c.isConnected,
-    hasCredentials: !!c.credentials 
-  })));
-  
   for (const connection of connections) {
-    console.log(`Checking connection ${connection.id}: isConnected=${connection.isConnected}`);
-    
     if (connection.isConnected) {
       try {
-        console.log(`Loading credentials for ${connection.id} from SecureStore...`);
         const credentials = await getCredentials(connection.id);
         
         if (credentials) {
-          console.log(`Found credentials for ${connection.id}, updating connection`);
           updateConnection(connection.id, { credentials });
         } else {
-          console.log(`No credentials found for ${connection.id}, marking as disconnected`);
           // Credentials not found, mark as disconnected
           updateConnection(connection.id, { isConnected: false });
         }
@@ -281,12 +270,4 @@ export const initializeCredentials = async () => {
   
   // Mark credentials as loaded
   useAppStore.setState({ credentialsLoaded: true });
-  
-  // Log final state
-  const finalState = useAppStore.getState();
-  console.log('Final connection state after initialization:', finalState.connections.map(c => ({ 
-    id: c.id, 
-    isConnected: c.isConnected,
-    hasCredentials: !!c.credentials 
-  })));
 };

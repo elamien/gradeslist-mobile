@@ -171,7 +171,6 @@ export async function fetchServerGradescopeAssignments(
     );
 
     console.log(`Server returned ${response.assignments.length} assignments for course ${courseId}`);
-    console.log('First few assignments from server:', response.assignments.slice(0, 3));
 
     // Convert server response to expected format
     return response.assignments.map(assignment => {
