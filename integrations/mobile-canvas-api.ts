@@ -87,16 +87,8 @@ export async function fetchCanvasCourses(filterTerm: string, apiTokenOrCredentia
   try {
     // Check if this is server-based authentication
     if (typeof apiTokenOrCredentials === 'object' && apiTokenOrCredentials.token) {
-      console.log('Using server-based Canvas course fetching');
-      try {
-        const { fetchServerCanvasCourses } = await import('./server-canvas-api');
-        const courses = await fetchServerCanvasCourses(filterTerm, apiTokenOrCredentials);
-        console.log('Got Canvas courses from server:', courses);
-        return courses;
-      } catch (error) {
-        console.error('Error fetching Canvas courses from server:', error);
-        throw error;
-      }
+      console.log('Server-based Canvas fetching not implemented');
+      throw new Error('Server-based Canvas API not available');
     }
     
     // Direct Canvas API call
@@ -127,16 +119,8 @@ export async function fetchCanvasAssignments(courseId: number | string, apiToken
   try {
     // Check if this is server-based authentication
     if (typeof apiTokenOrCredentials === 'object' && apiTokenOrCredentials.token) {
-      console.log('Using server-based Canvas assignment fetching');
-      try {
-        const { fetchServerCanvasAssignments } = await import('./server-canvas-api');
-        const assignments = await fetchServerCanvasAssignments(courseId.toString(), apiTokenOrCredentials);
-        console.log('Got Canvas assignments from server:', assignments);
-        return assignments;
-      } catch (error) {
-        console.error('Error fetching Canvas assignments from server:', error);
-        throw error;
-      }
+      console.log('Server-based Canvas assignment fetching not implemented');
+      throw new Error('Server-based Canvas API not available');
     }
     
     // Direct Canvas API call
@@ -170,14 +154,8 @@ export async function testCanvasConnection(apiTokenOrCredentials: string | Platf
   try {
     // Check if this is server-based authentication
     if (typeof apiTokenOrCredentials === 'object' && apiTokenOrCredentials.token) {
-      console.log('Testing server-based Canvas connection');
-      try {
-        const { testServerCanvasConnection } = await import('./server-canvas-api');
-        return await testServerCanvasConnection(apiTokenOrCredentials);
-      } catch (error) {
-        console.error('Server Canvas connection test error:', error);
-        return false;
-      }
+      console.log('Server-based Canvas connection testing not implemented');
+      return false;
     }
     
     // Direct Canvas API call
