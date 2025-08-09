@@ -1,10 +1,10 @@
 // Real Mobile Gradescope API - React Native Compatible
 // This version uses fetch and react-native-html-parser instead of axios and cheerio
 
-import { GradescopeAssignment, GradescopeCourse, GradescopeCourseList } from './gradescope-api';
 import { DateTime } from 'luxon';
 import { DOMParser } from 'react-native-html-parser';
 import { PlatformCredentials } from '../store/useAppStore';
+import { GradescopeAssignment, GradescopeCourse, GradescopeCourseList } from './gradescope-api';
 
 // Session cache to avoid repeated authentication
 const sessionCache = new Map<string, { cookies: string; timestamp: number }>();
@@ -356,7 +356,7 @@ function parseCourseInfo(doc: any, courseBox: any): GradescopeCourse | null {
       name,
       term
     };
-  } catch (error) {
+  } catch (_error) {
     return null;
   }
 }
@@ -461,7 +461,7 @@ async function fetchAssignmentsFromGradescope(courseId: string, sessionCookies: 
       };
       
       assignments.push(assignment);
-    } catch (error) {
+    } catch (_error) {
       // Continue to next row
     }
   });
@@ -481,7 +481,7 @@ function parseDate(dateTimeAttr: string | null): DateTime | null {
     if (parsed.isValid) {
       return parsed;
     }
-  } catch (e) {
+  } catch (_e) {
     // Ignore parsing errors
   }
   

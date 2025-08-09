@@ -1,7 +1,7 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 // Types for our store
 export interface PlatformCredentials {
@@ -106,7 +106,7 @@ const removeCredentials = async (platformId: string) => {
 
 export const useAppStore = create<AppState>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       // Initial state
       connections: initialConnections,
       credentialsLoaded: false,

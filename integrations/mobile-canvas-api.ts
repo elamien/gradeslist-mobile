@@ -1,8 +1,8 @@
 // Mobile-compatible Canvas API
 // Based on the original canvas-api.ts but optimized for React Native
 
-import { CanvasAssignment, CanvasCourse } from './canvas-api';
 import { PlatformCredentials } from '../store/useAppStore';
+import { CanvasAssignment, CanvasCourse } from './canvas-api';
 
 // Configuration
 const CANVAS_BASE_URL = 'https://canvas.its.virginia.edu';
@@ -188,7 +188,7 @@ export async function testCanvasConnection(apiTokenOrCredentials: string | Platf
     
     await fetchCanvasUserProfile(apiToken);
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }

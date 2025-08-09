@@ -1,12 +1,11 @@
-import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, Alert, LayoutAnimation, Platform, UIManager, RefreshControl, Switch } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState, useRef, useEffect } from 'react';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useAppStore } from '../../store/useAppStore';
+import { useRef, useState } from 'react';
+import { Alert, LayoutAnimation, Modal, Platform, RefreshControl, ScrollView, Switch, Text, TextInput, TouchableOpacity, UIManager, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { GradescopeProxyMethods } from '../../components/GradescopeWebViewProxy';
 import { useCourses } from '../../hooks/useCourses';
-import { GradescopeWebViewProxy, GradescopeProxyMethods } from '../../components/GradescopeWebViewProxy';
-import { setGradescopeProxy, clearGradescopeProxy } from '../../utils/proxyRegistry';
 import { NotificationService } from '../../services/notificationService';
+import { useAppStore } from '../../store/useAppStore';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android') {
@@ -20,10 +19,7 @@ export default function ProfileScreen() {
     connections, 
     selectedConnection,
     notificationsEnabled,
-    notificationPreferences,
-    setNotificationsEnabled,
-    updateNotificationPreferences,
-    setPushToken, 
+    setNotificationsEnabled, 
     selectedTerm,
     selectedSeason,
     selectedYear,
@@ -43,7 +39,7 @@ export default function ProfileScreen() {
   const [gradescopeEmail, setGradescopeEmail] = useState('');
   const [gradescopePassword, setGradescopePassword] = useState('');
   
-  const gradescopeProxyRef = useRef<GradescopeProxyMethods>(null);
+  const _gradescopeProxyRef = useRef<GradescopeProxyMethods>(null);
   
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -466,7 +462,7 @@ export default function ProfileScreen() {
                         try {
                           // Then, perform the async action
                           await NotificationService.initialize();
-                        } catch (error) {
+                        } catch (_error) {
                           // If it fails, revert the state and show an error
                           setNotificationsEnabled(false);
                           Alert.alert('Error', 'Failed to enable notifications. The setting has been reverted.');

@@ -1,8 +1,8 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { useCallback } from 'react';
+import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFilteredAssignments } from '../../hooks/useOfflineAssignments';
 import { useAppStore } from '../../store/useAppStore';
-import { useCallback } from 'react';
 
 function getGradeColor(score: number, maxPoints: number) {
   const percentage = (score / maxPoints) * 100;
@@ -31,7 +31,7 @@ function calculateLetterGrade(score: number, maxPoints: number): string {
 
 export default function GradesScreen() {
   const { connections, selectedCourseIds } = useAppStore();
-  const { assignments, isLoading, isFetching, error, refetch, hasCachedData, stats } = useFilteredAssignments({ isGraded: true });
+  const { assignments, isLoading, isFetching, error, refetch, hasCachedData } = useFilteredAssignments({ isGraded: true });
   const connectedPlatforms = connections.filter(conn => conn.isConnected);
 
   const onRefresh = useCallback(() => {

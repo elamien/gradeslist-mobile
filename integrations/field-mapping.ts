@@ -1,15 +1,14 @@
 // Field Mapping Functions - Convert API-specific data to Universal format
 // This is the "adapter pattern" that normalizes data from different sources
 
-import { DateTime } from 'luxon';
+
 import { CanvasAssignment, CanvasCourse } from './canvas-api';
 import { GradescopeAssignment, GradescopeCourse, GradescopeCourseList } from './gradescope-api';
-import { 
-  UniversalAssignment, 
-  UniversalCourse, 
-  UniversalCourseList, 
-  UniversalAssignmentStatus,
-  UniversalAPIResponse 
+import {
+    UniversalAssignment,
+    UniversalAssignmentStatus,
+    UniversalCourse,
+    UniversalCourseList
 } from './universal-interfaces';
 
 // =============================================
@@ -129,21 +128,7 @@ function mapGradescopeStatusToUniversal(gradescopeStatus: string): string {
 // UTILITY FUNCTIONS
 // =============================================
 
-// Create a standardized API response wrapper
-export function createUniversalResponse<T>(
-  data: T,
-  source: 'canvas' | 'gradescope',
-  success: boolean = true,
-  error?: string
-): UniversalAPIResponse<T> {
-  return {
-    data,
-    source,
-    timestamp: new Date().toISOString(),
-    success,
-    error
-  };
-}
+
 
 // Batch mapping functions
 export function mapCanvasAssignmentsToUniversal(

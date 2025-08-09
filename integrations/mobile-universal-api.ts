@@ -1,20 +1,20 @@
 // Mobile Universal API - React Native Compatible
 // This provides a unified interface for both Canvas and Gradescope APIs
 
-import { fetchCanvasCourses, fetchCanvasAssignments, testCanvasConnection } from './mobile-canvas-api';
-import { 
-  fetchServerGradescopeCourses as fetchGradescopeCourses, 
-  fetchServerGradescopeAssignments as fetchGradescopeAssignments, 
-  testServerGradescopeConnection as testGradescopeConnection 
-} from './server-gradescope-api';
-import { 
-  mapCanvasAssignmentsToUniversal, 
-  mapCanvasCoursesToUniversal,
-  mapGradescopeAssignmentsToUniversal,
-  mapGradescopeCourseListToUniversal
-} from './field-mapping';
-import { UniversalAssignment, UniversalCourse } from './universal-interfaces';
 import { PlatformCredentials } from '../store/useAppStore';
+import {
+    mapCanvasAssignmentsToUniversal,
+    mapCanvasCoursesToUniversal,
+    mapGradescopeAssignmentsToUniversal,
+    mapGradescopeCourseListToUniversal
+} from './field-mapping';
+import { fetchCanvasAssignments, fetchCanvasCourses, testCanvasConnection } from './mobile-canvas-api';
+import {
+    fetchServerGradescopeAssignments as fetchGradescopeAssignments,
+    fetchServerGradescopeCourses as fetchGradescopeCourses,
+    testServerGradescopeConnection as testGradescopeConnection
+} from './server-gradescope-api';
+import { UniversalAssignment, UniversalCourse } from './universal-interfaces';
 
 // =============================================
 // UNIVERSAL ASSIGNMENT FUNCTIONS
@@ -240,69 +240,17 @@ export async function testConnection(
 // UTILITY FUNCTIONS
 // =============================================
 
-/**
- * Merge assignments from multiple platforms
- */
-export function mergeAssignments(
-  assignments: UniversalAssignment[][]
-): UniversalAssignment[] {
-  return assignments.flat();
-}
 
-/**
- * Filter assignments by status
- */
-export function filterAssignmentsByStatus(
-  assignments: UniversalAssignment[],
-  status: string
-): UniversalAssignment[] {
-  return assignments.filter(assignment => assignment.status === status);
-}
 
-/**
- * Filter assignments by due date range
- */
-export function filterAssignmentsByDueDate(
-  assignments: UniversalAssignment[],
-  startDate?: string,
-  endDate?: string
-): UniversalAssignment[] {
-  return assignments.filter(assignment => {
-    if (!assignment.due_date) return false;
-    
-    const dueDate = new Date(assignment.due_date);
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
-    
-    if (start && dueDate < start) return false;
-    if (end && dueDate > end) return false;
-    
-    return true;
-  });
-}
 
-/**
- * Sort assignments by due date
- */
-export function sortAssignmentsByDueDate(
-  assignments: UniversalAssignment[]
-): UniversalAssignment[] {
-  return assignments.sort((a, b) => {
-    if (!a.due_date && !b.due_date) return 0;
-    if (!a.due_date) return 1;
-    if (!b.due_date) return -1;
-    
-    return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-  });
-}
+
+
+
+
 
 // Export the main API object for easy importing
 export const universalAPI = {
   getAssignments,
   getCourses,
-  testConnection,
-  mergeAssignments,
-  filterAssignmentsByStatus,
-  filterAssignmentsByDueDate,
-  sortAssignmentsByDueDate
+  testConnection
 };

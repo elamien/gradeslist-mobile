@@ -3,15 +3,15 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
-import { TamaguiProvider } from 'tamagui';
-import { config } from '../tamagui.config';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Animated } from 'react-native';
-import { initializeCredentials } from '../store/useAppStore';
-import { NotificationService } from '../services/notificationService';
+import { TamaguiProvider } from 'tamagui';
 import { databaseService } from '../services/databaseService';
-import { CustomSplashScreen } from '../components/SplashScreen';
+import { NotificationService } from '../services/notificationService';
+import { initializeCredentials } from '../store/useAppStore';
+import { config } from '../tamagui.config';
+
 
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient({
@@ -31,7 +31,6 @@ export default function RootLayout() {
   }));
 
   const [isAppReady, setIsAppReady] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
   const appFadeAnim = useRef(new Animated.Value(0)).current;
 
   // Initialize credentials, database, and notifications when app starts
@@ -87,7 +86,7 @@ export default function RootLayout() {
     if (isAppReady) {
       appFadeAnim.setValue(1);
     }
-  }, [isAppReady]);
+  }, [isAppReady, appFadeAnim]);
 
   return (
     <Animated.View style={{ flex: 1, opacity: appFadeAnim }}>

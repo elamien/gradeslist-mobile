@@ -1,13 +1,13 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { useCallback } from 'react';
+import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFilteredAssignments } from '../../hooks/useOfflineAssignments';
 import { useAppStore } from '../../store/useAppStore';
-import { useCallback } from 'react';
 import { formatDate } from '../../utils/dateUtils';
 
 export default function DueScreen() {
   const { connections, selectedCourseIds } = useAppStore();
-  const { assignments, isLoading, isFetching, error, refetch, hasCachedData, stats } = useFilteredAssignments({ isGraded: false });
+  const { assignments, isLoading, isFetching, error, refetch, hasCachedData } = useFilteredAssignments({ isGraded: false });
   const connectedPlatforms = connections.filter(conn => conn.isConnected);
 
   const onRefresh = useCallback(() => {
