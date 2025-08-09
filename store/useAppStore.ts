@@ -137,7 +137,7 @@ export const useAppStore = create<AppState>()(
       connectPlatform: async (id, credentials) => {
         try {
           // Test the connection first
-          const { universalAPI } = await import('../integrations/mobile-universal-api');
+          const { universalAPI } = await import('../integrations/core/api-coordinator');
           const isValid = await universalAPI.testConnection(
             id as 'canvas' | 'gradescope',
             credentials
