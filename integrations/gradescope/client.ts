@@ -1,6 +1,6 @@
 // Server-based Gradescope API - calls our Node.js server instead of direct scraping
-import { GradescopeAssignment, GradescopeCourse, GradescopeCourseList } from './gradescope-api';
-import { PlatformCredentials } from '../store/useAppStore';
+import { PlatformCredentials } from '../../store/useAppStore';
+import { GradescopeAssignment, GradescopeCourseList } from './types';
 
 // Configure server URL - update this when you deploy
 const SERVER_BASE_URL = 'https://gradeslist-mobile.vercel.app';

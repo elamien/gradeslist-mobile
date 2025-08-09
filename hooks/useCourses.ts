@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { universalAPI } from '../integrations/core/api-coordinator';
+import { UniversalCourse } from '../integrations/core/normalized-types';
 import { useAppStore } from '../store/useAppStore';
-import { universalAPI } from '../integrations/mobile-universal-api';
-import { UniversalCourse } from '../integrations/universal-interfaces';
 
 export const useCourses = () => {
   const { connections, selectedTerm, credentialsLoaded } = useAppStore();

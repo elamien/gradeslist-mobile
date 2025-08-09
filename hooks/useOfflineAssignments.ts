@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { universalAPI } from '../integrations/core/api-coordinator';
 import { databaseService, StoredAssignment } from '../services/databaseService';
-import { universalAPI } from '../integrations/mobile-universal-api';
 import { useAppStore } from '../store/useAppStore';
 
 /**

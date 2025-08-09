@@ -1,8 +1,8 @@
 // Mobile-compatible Canvas API
 // Based on the original canvas-api.ts but optimized for React Native
 
-import { PlatformCredentials } from '../store/useAppStore';
-import { CanvasAssignment, CanvasCourse } from './canvas-api';
+import { PlatformCredentials } from '../../store/useAppStore';
+import { CanvasAssignment, CanvasCourse } from './types';
 
 // Configuration
 const CANVAS_BASE_URL = 'https://canvas.its.virginia.edu';

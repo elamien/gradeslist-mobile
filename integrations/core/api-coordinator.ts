@@ -1,20 +1,20 @@
 // Mobile Universal API - React Native Compatible
 // This provides a unified interface for both Canvas and Gradescope APIs
 
-import { PlatformCredentials } from '../store/useAppStore';
+import { PlatformCredentials } from '../../store/useAppStore';
+import { fetchCanvasAssignments, fetchCanvasCourses, testCanvasConnection } from '../canvas/client';
+import {
+    fetchServerGradescopeAssignments as fetchGradescopeAssignments,
+    fetchServerGradescopeCourses as fetchGradescopeCourses,
+    testServerGradescopeConnection as testGradescopeConnection
+} from '../gradescope/client';
 import {
     mapCanvasAssignmentsToUniversal,
     mapCanvasCoursesToUniversal,
     mapGradescopeAssignmentsToUniversal,
     mapGradescopeCourseListToUniversal
-} from './field-mapping';
-import { fetchCanvasAssignments, fetchCanvasCourses, testCanvasConnection } from './mobile-canvas-api';
-import {
-    fetchServerGradescopeAssignments as fetchGradescopeAssignments,
-    fetchServerGradescopeCourses as fetchGradescopeCourses,
-    testServerGradescopeConnection as testGradescopeConnection
-} from './server-gradescope-api';
-import { UniversalAssignment, UniversalCourse } from './universal-interfaces';
+} from './data-normalizers';
+import { UniversalAssignment, UniversalCourse } from './normalized-types';
 
 // =============================================
 // UNIVERSAL ASSIGNMENT FUNCTIONS

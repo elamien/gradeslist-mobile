@@ -2,14 +2,14 @@
 // This is the "adapter pattern" that normalizes data from different sources
 
 
-import { CanvasAssignment, CanvasCourse } from './canvas-api';
-import { GradescopeAssignment, GradescopeCourse, GradescopeCourseList } from './gradescope-api';
+import { CanvasAssignment, CanvasCourse } from '../canvas/types';
+import { GradescopeAssignment, GradescopeCourse, GradescopeCourseList } from '../gradescope/types';
 import {
     UniversalAssignment,
     UniversalAssignmentStatus,
     UniversalCourse,
     UniversalCourseList
-} from './universal-interfaces';
+} from './normalized-types';
 
 // =============================================
 // CANVAS TO UNIVERSAL MAPPING

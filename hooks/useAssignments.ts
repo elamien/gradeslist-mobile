@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { universalAPI } from '../integrations/mobile-universal-api';
-import { UniversalAssignment } from '../integrations/universal-interfaces';
+import { universalAPI } from '../integrations/core/api-coordinator';
+import { UniversalAssignment } from '../integrations/core/normalized-types';
 import { useAppStore } from '../store/useAppStore';
 
 export const useAssignments = () => {
