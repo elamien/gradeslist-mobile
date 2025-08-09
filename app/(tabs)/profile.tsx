@@ -2,6 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRef, useState } from 'react';
 import { Alert, LayoutAnimation, Modal, Platform, RefreshControl, ScrollView, Switch, Text, TextInput, TouchableOpacity, UIManager, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import GradescopeWebViewAuth from '../../components/GradescopeWebViewAuth';
 import { GradescopeProxyMethods } from '../../components/GradescopeWebViewProxy';
 import { useCourses } from '../../hooks/useCourses';
 import { NotificationService } from '../../services/notificationService';
@@ -35,6 +36,7 @@ export default function ProfileScreen() {
   
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showGradescopeCredentialsModal, setShowGradescopeCredentialsModal] = useState(false);
+  const [showWebViewAuthModal, setShowWebViewAuthModal] = useState(false);
   
   const [gradescopeEmail, setGradescopeEmail] = useState('');
   const [gradescopePassword, setGradescopePassword] = useState('');
@@ -347,6 +349,58 @@ export default function ProfileScreen() {
                       </View>
                     </TouchableOpacity>
                   ))}
+                </View>
+                
+                {/* WebView Authentication Experiment */}
+                <View style={{ marginTop: 24 }}>
+                  <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 16, color: '#374151' }}>
+                    🔬 Experimental Features
+                  </Text>
+                  <TouchableOpacity 
+                    activeOpacity={0.7}
+                    onPress={() => setShowWebViewAuthModal(true)}
+                    style={{
+                      backgroundColor: '#fff3cd',
+                      borderRadius: 12,
+                      padding: 16,
+                      borderWidth: 1,
+                      borderColor: '#ffeaa7',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12
+                    }}
+                  >
+                    <View style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 8,
+                      backgroundColor: '#fdcb6e20',
+                      justifyContent: 'center',
+                      alignItems: 'center'
+                    }}>
+                      <Text style={{ fontSize: 20 }}>🌐</Text>
+                    </View>
+                    
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '600', color: '#374151' }}>
+                        WebView Gradescope Auth
+                      </Text>
+                      <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                        Experimental: Login via WebView instead of credentials
+                      </Text>
+                    </View>
+                    
+                    <View style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 12,
+                      backgroundColor: '#fdcb6e30',
+                      justifyContent: 'center',
+                      alignItems: 'center'
+                    }}>
+                      <MaterialIcons name="science" size={12} color="#e17055" />
+                    </View>
+                  </TouchableOpacity>
                 </View>
               </View>
             )}
@@ -1210,6 +1264,90 @@ export default function ProfileScreen() {
 
       {/* WebView proxy disabled - now using server-side API */}
       {/* Server handles all scraping, no need for WebView proxy */}
+
+      {/* WebView Authentication Experiment Modal */}
+      <Modal
+        visible={showWebViewAuthModal}
+        animationType="slide"
+        transparent={false}
+        statusBarTranslucent={false}
+        onRequestClose={() => setShowWebViewAuthModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#f8f9fa', paddingTop: 50 }}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingTop: 15,
+            paddingBottom: 20,
+            borderBottomWidth: 1,
+            borderBottomColor: '#e5e5e5',
+            backgroundColor: '#f8f9fa',
+            minHeight: 70
+          }}>
+            <TouchableOpacity
+              onPress={() => setShowWebViewAuthModal(false)}
+              style={{
+                padding: 8,
+                borderRadius: 8,
+                backgroundColor: '#f3f4f6',
+                minWidth: 36,
+                minHeight: 36,
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}
+            >
+              <MaterialIcons name="close" size={20} color="#666" />
+            </TouchableOpacity>
+            <Text style={{
+              flex: 1,
+              textAlign: 'center',
+              fontSize: 18,
+              fontWeight: '600',
+              color: '#374151'
+            }}>
+              🔬 WebView Auth Experiment
+            </Text>
+            <View style={{ width: 36 }} />
+          </View>
+          
+          <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
+            <GradescopeWebViewAuth
+              onAuthSuccess={(cookies, sessionData) => {
+                console.log('[SUCCESS] WebView auth successful!');
+                console.log('[SUCCESS] Extracted cookies length:', cookies?.length || 0);
+                console.log('[SUCCESS] Session data:', sessionData);
+                
+                Alert.alert(
+                  'Experiment Success! 🎉',
+                  `Successfully extracted ${cookies?.length || 0} characters of session data. This proves WebView auth is possible!`,
+                  [
+                    {
+                      text: 'Close Experiment',
+                      onPress: () => setShowWebViewAuthModal(false)
+                    }
+                  ]
+                );
+              }}
+              onAuthFailure={(error) => {
+                console.log('[ERROR] WebView auth failed:', error);
+                
+                Alert.alert(
+                  'Experiment Result 📊',
+                  `Auth failed: ${error}\n\nThis provides valuable data about limitations.`,
+                  [
+                    {
+                      text: 'Close Experiment',
+                      onPress: () => setShowWebViewAuthModal(false)
+                    }
+                  ]
+                );
+              }}
+              onClose={() => setShowWebViewAuthModal(false)}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

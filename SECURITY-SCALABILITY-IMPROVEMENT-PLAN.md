@@ -43,23 +43,31 @@ The mobile app is architecturally solid for device-side use (SecureStore for sec
   - [ ] Never log request bodies; redact `Authorization`, passwords, cookies, push tokens in all logs.
   - [ ] Replace `console.log` of push tokens with hashed/truncated identifiers.
   - [ ] Add centralized error middleware that scrubs PII before logging.
+  - [ ] **URGENT**: Remove debug logs from `integrations/core/api-coordinator.ts` that log credential objects
 - Client data minimization
   - [ ] In `services/notificationService.ts`, stop sending `platform.credentials` to notification registration; send only a device/user ID and platform IDs.
+- Mobile security hardening
+  - [ ] Add biometric authentication for credential access (Face ID/Touch ID)
+  - [ ] Implement app backgrounding protection (hide sensitive screens in task switcher)
+  - [ ] Add deep linking validation to prevent credential exposure via URL schemes
 - Operational guardrails
   - [ ] Reduce rate limit thresholds per-IP and add per-user limits on sensitive endpoints.
   - [ ] Set body size limits on all JSON parsers across server/serverless.
 
 ### Milestone 1: Identity and persistence (weeks 1–3)
 - Database setup
-  - [ ] Stand up Postgres (or Supabase/Neon) with migrations.
+  - [ ] **Consider**: Start with Redis + minimal SQLite server-side before full Postgres (simpler for mobile-first use case)
   - [ ] Schemas: `users`, `devices`, `platform_connections` (hashed identifiers only), `notification_preferences`, `push_tokens`, `events/audit`.
 - Authentication & authorization
-  - [ ] Introduce device-bound JWT auth for API calls; short-lived tokens signed by server secret.
+  - [ ] **Alternative to JWT**: Consider simpler device API keys for mobile use case (less overhead, better offline support)
   - [ ] Register device + associate push token; rotate/revoke on demand.
   - [ ] Map platform connections without storing raw credentials server-side.
 - API refactor
-  - [ ] Update `api/notifications/register` to require JWT and persist tokens/preferences.
+  - [ ] Update `api/notifications/register` to require auth and persist tokens/preferences.
   - [ ] Add input validation (zod/yup) and consistent error envelopes.
+- Canvas token security improvements
+  - [ ] Implement Canvas token refresh flow (current tokens don't expire)
+  - [ ] Add token rotation schedule and validation
 
 ### Milestone 2: Gradescope integration hardening (weeks 2–5)
 - Prefer on-device session (WebView proxy)
@@ -114,6 +122,7 @@ The mobile app is architecturally solid for device-side use (SecureStore for sec
 
 ### 5) Canvas auth improvements
 - Add OAuth 2.0 PKCE/device-code option to replace manual token entry; manage token refresh on-device.
+- **CRITICAL**: Current Canvas tokens are long-lived and don't rotate - implement token lifecycle management.
 
 ### 6) Notifications architecture
 - Durable DB-backed state; compute deltas vs last snapshot.
@@ -141,14 +150,25 @@ The mobile app is architecturally solid for device-side use (SecureStore for sec
 
 ---
 
-## Task checklist (initial cut)
-- [ ] Lock CORS to trusted origins in `server/server.js` and serverless routes
-- [ ] Add JWT auth middleware for `api/notifications/register` and Gradescope routes
+## Task checklist (initial cut) - PRIORITIZED
+### 🔥 CRITICAL (Days 1-3)
+- [ ] **URGENT**: Remove debug logging from `integrations/core/api-coordinator.ts` (logs credential objects)
+- [ ] Lock CORS to trusted origins in deployed Vercel functions
+- [ ] Add log scrubbing middleware; remove request body and token logs from all API endpoints
 - [ ] Remove credentials from `NotificationService.updateDeviceToken` payload; send device ID only
-- [ ] Add log scrubbing middleware; remove request body and token logs
-- [ ] Introduce Postgres + migrations; implement `users`, `devices`, `push_tokens`, `preferences`, `platform_connections`
-- [ ] Implement device-bound JWT issuance/rotation
-- [ ] Add Redis; implement session cache with TTL for Gradescope
+
+### 📱 MOBILE HARDENING (Days 4-7)  
+- [ ] Add biometric authentication for credential access
+- [ ] Implement app backgrounding protection
+- [ ] Canvas token lifecycle management (refresh/rotation)
+
+### 🏗️ INFRASTRUCTURE (Weeks 2-4)
+- [ ] Add auth middleware for Vercel serverless functions 
+- [ ] Introduce lightweight persistence (Redis or minimal DB)
+- [ ] Implement device registration and API key system
+- [ ] Add session cache with TTL for Gradescope
+
+### 🔧 ADVANCED (Weeks 3-6)
 - [ ] Add queue workers and backoff for Gradescope requests
 - [ ] Build durable notifications worker with idempotency and DLQ
 - [ ] Add metrics/tracing and load tests; define SLOs and alerts
@@ -156,15 +176,26 @@ The mobile app is architecturally solid for device-side use (SecureStore for sec
 ---
 
 ## Notes on rollout
-- Ship Milestone 0 as a fast PR to reduce exposure.
-- Milestone 1 introduces DB and JWT; plan a small migration and release feature flags.
-- Milestone 2/3 can ship incrementally (session cache first, then queue/backoff; basic notifications then idempotency & DLQ).
+- **CHANGED**: Ship critical logging fixes immediately (no PR needed for security)
+- Ship remaining Milestone 0 as fast PR to reduce exposure
+- **UPDATED**: Milestone 1 can start simpler (device API keys vs JWT, Redis vs full DB)
+- Milestone 2/3 can ship incrementally (session cache first, then queue/backoff; basic notifications then idempotency & DLQ)
 
-## References (code)
-- Client secure storage and partial persistence: `store/useAppStore.ts`
+## Architecture Notes Post-Refactor
+- ✅ **COMPLETED**: Enterprise platform organization in `integrations/` 
+- ✅ **COMPLETED**: Clean separation between Canvas (direct API) and Gradescope (serverless functions)
+- ✅ **COMPLETED**: Removed 14k+ lines of unused/legacy code
+- 🎯 **FOUNDATION READY**: Clean architecture enables systematic security improvements
+
+## References (code) - UPDATED POST-REFACTOR
+- Client secure storage and persistence: `store/useAppStore.ts`
 - Notification registration (client): `services/notificationService.ts`
-- Server baseline: `server/server.js`
-- Serverless notifications route: `api/notifications/register.js`
-- Gradescope flows: `integrations/mobile-gradescope-api-real.ts`, `api-extraction/gradescope-api.ts`, `server/routes/gradescope.js`
+- Database service: `services/databaseService.ts`
+- **NEW**: Enterprise API architecture: `integrations/core/api-coordinator.ts`
+- Canvas API client: `integrations/canvas/client.ts`
+- Gradescope API client: `integrations/gradescope/client.ts`
+- Data transformation: `integrations/core/data-normalizers.ts`
+- Type definitions: `integrations/*/types.ts`, `integrations/core/normalized-types.ts`
+- Serverless endpoints: Deployed Vercel functions (see current API calls in gradescope client)
 
 
