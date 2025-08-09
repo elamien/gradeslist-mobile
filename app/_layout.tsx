@@ -31,6 +31,7 @@ export default function RootLayout() {
   }));
 
   const [isAppReady, setIsAppReady] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const appFadeAnim = useRef(new Animated.Value(0)).current;
 
   // Initialize credentials, database, and notifications when app starts
@@ -58,24 +59,35 @@ export default function RootLayout() {
 
     initializeApp();
 
-    // Simple timer: show splash for 3 seconds then transition
+    // Mark app as ready after initialization, but keep splash visible
     setTimeout(() => {
-      console.log('Splash screen timer completed - triggering fade transition');
+      console.log('App initialization complete - marking ready');
       setIsAppReady(true);
-      
-      // Start fade in animation for main app
-      Animated.timing(appFadeAnim, {
-        toValue: 1,
-        duration: 500, // 500ms fade in
-        useNativeDriver: true,
-      }).start();
-    }, 3000);
+    }, 1000); // App ready early, but splash still controls transition
     
   }, []);
 
-  if (!isAppReady) {
-    return <CustomSplashScreen />;
-  }
+  // TODO: Fix splash screen animation later - temporarily disabled due to white screen issue
+  // The CustomSplashScreen component exists but causes the app to get stuck on white screen
+  // if (!isAppReady) {
+  //   return <CustomSplashScreen onAnimationFinish={() => {
+  //     console.log('Splash animation finished, showing main app');
+  //     setShowSplash(false);
+  //     // Fade in main app
+  //     Animated.timing(appFadeAnim, {
+  //       toValue: 1,
+  //       duration: 300,
+  //       useNativeDriver: true,
+  //     }).start();
+  //   }} />;
+  // }
+
+  // Set app to fully visible immediately
+  useEffect(() => {
+    if (isAppReady) {
+      appFadeAnim.setValue(1);
+    }
+  }, [isAppReady]);
 
   return (
     <Animated.View style={{ flex: 1, opacity: appFadeAnim }}>

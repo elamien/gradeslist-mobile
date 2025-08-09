@@ -43,3 +43,25 @@ When server changes are made:
 3. Server runs on port 3001 and serves Gradescope API endpoints
 
 **Reason**: Automated server restarts cause hanging and timeout issues.
+
+### Android APK Build & Testing
+
+To build and test an APK:
+
+1. **Build APK using EAS Build**:
+   ```bash
+   npx eas build --platform android --profile preview
+   ```
+   This creates a development APK that can be installed on devices/simulators.
+
+2. **Alternative - Local build** (if EAS doesn't work):
+   ```bash
+   npx expo run:android
+   ```
+   Requires Android Studio and SDK setup.
+
+3. **Test on Android Simulator**:
+   - Open Android Studio
+   - Start an Android Virtual Device (AVD)
+   - Install APK: `adb install path/to/your.apk`
+   - Or drag APK file to simulator window

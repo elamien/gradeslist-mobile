@@ -20,7 +20,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.elamien.gradeslistmobile"
     },
     "web": {
       "bundler": "metro",
@@ -39,7 +40,6 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/notification-icon.png",
           "color": "#3b82f6",
           "defaultChannel": "default"
         }

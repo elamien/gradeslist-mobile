@@ -33,9 +33,9 @@ export function CustomSplashScreen({ onAnimationFinish, shouldFadeOut }: SplashS
 
     // Fallback timer in case animation doesn't trigger onAnimationFinish
     const fallbackTimer = setTimeout(() => {
-      console.log('Fallback timer triggered - finishing splash screen');
+      console.log('Fallback timer triggered - starting fade out');
       handleAnimationFinish();
-    }, 4000); // 4 seconds fallback
+    }, 2800); // Start fade out slightly before 3 seconds
 
     return () => {
       clearTimeout(fallbackTimer);
