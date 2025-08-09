@@ -58,28 +58,15 @@ export default function RootLayout() {
 
     initializeApp();
 
-    // Mark app as ready after initialization, but keep splash visible
+    // Mark app as ready after initialization
     setTimeout(() => {
       console.log('App initialization complete - marking ready');
       setIsAppReady(true);
-    }, 1000); // App ready early, but splash still controls transition
+    }, 1000);
     
   }, []);
 
-  // TODO: Fix splash screen animation later - temporarily disabled due to white screen issue
-  // The CustomSplashScreen component exists but causes the app to get stuck on white screen
-  // if (!isAppReady) {
-  //   return <CustomSplashScreen onAnimationFinish={() => {
-  //     console.log('Splash animation finished, showing main app');
-  //     setShowSplash(false);
-  //     // Fade in main app
-  //     Animated.timing(appFadeAnim, {
-  //       toValue: 1,
-  //       duration: 300,
-  //       useNativeDriver: true,
-  //     }).start();
-  //   }} />;
-  // }
+  // App ready - no custom splash screen needed
 
   // Set app to fully visible immediately
   useEffect(() => {

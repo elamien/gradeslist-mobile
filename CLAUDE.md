@@ -21,7 +21,6 @@
 4. Auth/persistence
 
 ## Architecture Notes
-- Using Tamagui for UI components
 - Expo Router for navigation
 - Three main tabs: Due, Grades, Profile
 
@@ -31,6 +30,11 @@
 - **Be specific but brief**: "add notifications" not "implement comprehensive notification system with push alerts and background services"
 - **Bullet points if needed**: Use 2-4 brief bullets for complex changes
 - **No verbose explanations**: Let the code speak, commits are for what/why not how
+
+⚠️ **CRITICAL: NO AUTO-COMMITS**
+- **NEVER** run `git add` or `git commit` without explicit user permission
+- **ALWAYS** wait for user to explicitly say "commit" or "commit this"
+- User must approve every single commit manually
 
 ## Development Workflow
 
