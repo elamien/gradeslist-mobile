@@ -17,6 +17,7 @@ export default function GradescopeWebViewAuth({
 }: GradescopeWebViewAuthProps) {
   const [currentUrl, setCurrentUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [authCompleted, setAuthCompleted] = useState(false);
   const webViewRef = useRef<WebView>(null);
 
   // Gradescope login URL
@@ -35,9 +36,12 @@ export default function GradescopeWebViewAuth({
     setCurrentUrl(navState.url);
     setIsLoading(navState.loading);
 
-    // Check if we've reached the dashboard (successful login)
-    if (navState.url.includes('/courses') || navState.url.includes('/dashboard')) {
+    // Check if we've reached the dashboard (successful login) and haven't completed auth yet
+    if ((navState.url.includes('/courses') || navState.url.includes('/dashboard')) && !authCompleted) {
       console.log('[SUCCESS] Detected successful login - URL contains courses/dashboard');
+      
+      // Mark auth as completed to prevent duplicate triggers
+      setAuthCompleted(true);
       
       // Try to extract cookies and session data immediately
       setTimeout(() => {
@@ -119,49 +123,43 @@ export default function GradescopeWebViewAuth({
         console.log('[API-TEST] Cookie preview:', data.cookiesPreview);
         console.log('[API-TEST] Session tokens found:', Object.keys(data.sessionTokens?.localStorage || {}).length);
         
-        // Test API call with extracted cookies
-        testGradescopeAPI(data);
+        // Use production WebView auth service
+        handleAuthSuccess(data);
       }
     } catch (_e) {
       console.log('[WEBVIEW-BRIDGE] Raw message (not JSON):', event.nativeEvent.data);
     }
   };
 
-  const testGradescopeAPI = async (authData: any) => {
-    console.log('[API-TEST] Starting Gradescope API test with extracted session data...');
+  const handleAuthSuccess = async (authData: any) => {
+    console.log('[WebViewAuth] Processing authentication success...');
     
     try {
-      // Test with courses API endpoint (same one our app uses)
-      const testUrl = 'https://gradeslist-mobile.vercel.app/api/gradescope/courses';
+      // Import the production service
+      const { GradescopeWebViewAuthService } = await import('../services/gradescopeWebViewAuthService');
       
-      console.log('[API-TEST] Testing with extracted cookie preview:', authData.cookiesPreview);
-      console.log('[API-TEST] Making request to:', testUrl);
+      console.log('[WebViewAuth] Parsing session data...');
+      console.log('[WebViewAuth] Cookie count:', authData.cookieCount);
+      console.log('[WebViewAuth] Cookie preview:', authData.cookiesPreview);
       
-      // For now, just test that we can extract meaningful data
-      // In a real implementation, we would send the full cookies to our server
-      // or test direct Gradescope API calls
+      // Parse and validate the session data
+      const result = GradescopeWebViewAuthService.parseWebViewAuthData(authData);
       
-      const result = {
-        cookieLength: authData.cookieCount,
-        hasSessionTokens: Object.keys(authData.sessionTokens?.localStorage || {}).length > 0,
-        pageTitle: authData.title,
-        currentUrl: authData.url
-      };
-      
-      console.log('[API-TEST] Extraction test results:', result);
-      
-      // Trigger success callback with meaningful data
-      if (authData.cookieCount > 0) {
-        console.log('[SUCCESS] Cookie extraction test passed - ready for API integration!');
-        onAuthSuccess?.(authData.cookiesPreview, result);
+      if (result.success && result.sessionData) {
+        console.log('[WebViewAuth] Session data parsed successfully');
+        console.log('[WebViewAuth] User ID:', result.sessionData.userId);
+        console.log('[WebViewAuth] Expires at:', result.sessionData.expiresAt);
+        
+        // Trigger success callback with the parsed session data
+        onAuthSuccess?.(result.sessionData.sessionCookies, result.sessionData);
       } else {
-        console.log('[ERROR] No cookies found for API testing');
-        onAuthFailure?.('No session cookies detected');
+        console.error('[WebViewAuth] Failed to parse session data:', result.error);
+        onAuthFailure?.(result.error || 'Failed to parse session data');
       }
       
     } catch (error) {
-      console.log('[ERROR] API test failed:', error);
-      onAuthFailure?.(`API test error: ${error}`);
+      console.error('[WebViewAuth] Authentication processing failed:', error);
+      onAuthFailure?.(`Authentication failed: ${error}`);
     }
   };
 

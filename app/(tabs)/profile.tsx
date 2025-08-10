@@ -2,6 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRef, useState } from 'react';
 import { Alert, LayoutAnimation, Modal, Platform, RefreshControl, ScrollView, Switch, Text, TextInput, TouchableOpacity, UIManager, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ExperimentalGradescopeTest from '../../components/ExperimentalGradescopeTest';
 import GradescopeWebViewAuth from '../../components/GradescopeWebViewAuth';
 import { GradescopeProxyMethods } from '../../components/GradescopeWebViewProxy';
 import { useCourses } from '../../hooks/useCourses';
@@ -29,7 +30,13 @@ export default function ProfileScreen() {
     connectPlatform, 
     disconnectPlatform,
     setSelectedTerm,
-    toggleCourseSelection
+    toggleCourseSelection,
+    // WebView Auth
+    _gradescopeAuthMethod: gradescopeAuthMethod,
+    _webViewAuthState: webViewAuthState,
+    authenticateWithWebView,
+    _clearWebViewAuth: clearWebViewAuth,
+    _refreshWebViewAuthState: refreshWebViewAuthState
   } = useAppStore();
   
   const { data: availableCourses, isLoading: coursesLoading, refetch: refetchCourses } = useCourses();
@@ -37,6 +44,7 @@ export default function ProfileScreen() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showGradescopeCredentialsModal, setShowGradescopeCredentialsModal] = useState(false);
   const [showWebViewAuthModal, setShowWebViewAuthModal] = useState(false);
+  const [showExperimentalTestModal, setShowExperimentalTestModal] = useState(false);
   
   const [gradescopeEmail, setGradescopeEmail] = useState('');
   const [gradescopePassword, setGradescopePassword] = useState('');
@@ -46,7 +54,7 @@ export default function ProfileScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [activeTab, setActiveTab] = useState<'platforms' | 'settings' | 'privacy'>('platforms');
+  const [activeTab, setActiveTab] = useState<'platforms' | 'settings' | 'privacy' | 'experimental'>('platforms');
   const [isConnecting, setIsConnecting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showTermModal, setShowTermModal] = useState(false);
@@ -516,8 +524,9 @@ export default function ProfileScreen() {
                         try {
                           // Then, perform the async action
                           await NotificationService.initialize();
-                        } catch (_error) {
+                        } catch (error) {
                           // If it fails, revert the state and show an error
+                          console.warn('Failed to initialize notifications:', error);
                           setNotificationsEnabled(false);
                           Alert.alert('Error', 'Failed to enable notifications. The setting has been reverted.');
                         }
@@ -689,6 +698,70 @@ export default function ProfileScreen() {
           </View>
         );
 
+      case 'experimental':
+        return (
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 16, color: '#374151' }}>
+              🧪 Experimental Features
+            </Text>
+
+            <View style={{
+              backgroundColor: '#ffffff',
+              borderRadius: 12,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: '#e5e5e5',
+              marginBottom: 16
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+                <MaterialIcons name="science" size={24} color="#f59e0b" />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '500', marginBottom: 4, color: '#f59e0b' }}>
+                    Direct API Client Test
+                  </Text>
+                  <Text style={{ fontSize: 14, color: '#6b7280', lineHeight: 20 }}>
+                    Test direct communication with Gradescope using WebView session cookies. This bypasses the server and attempts direct API calls.
+                  </Text>
+                </View>
+              </View>
+              
+              <TouchableOpacity 
+                onPress={() => setShowExperimentalTestModal(true)}
+                style={{
+                  backgroundColor: '#f59e0b',
+                  padding: 12,
+                  borderRadius: 8,
+                  alignItems: 'center'
+                }}
+              >
+                <Text style={{ color: 'white', fontWeight: '500' }}>
+                  🧪 Run Direct Client Experiment
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{
+              backgroundColor: '#fff3cd',
+              borderRadius: 12,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: '#ffeaa7'
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                <MaterialIcons name="warning" size={20} color="#e17055" />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', marginBottom: 4, color: '#e17055' }}>
+                    Experimental Warning
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#6b7280', lineHeight: 16 }}>
+                    These features are experimental and may not work as expected. Results are logged for development purposes only.
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        );
+
       default:
         return null;
     }
@@ -716,7 +789,8 @@ export default function ProfileScreen() {
           {[
             { id: 'platforms', label: 'Platforms', icon: 'link' },
             { id: 'settings', label: 'Settings', icon: 'settings' },
-            { id: 'privacy', label: 'Privacy', icon: 'security' }
+            { id: 'privacy', label: 'Privacy', icon: 'security' },
+            { id: 'experimental', label: '🧪 Test', icon: 'science' }
           ].map((tab) => (
             <TouchableOpacity
               key={tab.id}
@@ -1313,22 +1387,44 @@ export default function ProfileScreen() {
           
           <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
             <GradescopeWebViewAuth
-              onAuthSuccess={(cookies, sessionData) => {
-                console.log('[SUCCESS] WebView auth successful!');
-                console.log('[SUCCESS] Extracted cookies length:', cookies?.length || 0);
-                console.log('[SUCCESS] Session data:', sessionData);
+                          onAuthSuccess={async (cookies, sessionData) => {
+              console.log('[SUCCESS] WebView auth successful!');
+              console.log('[SUCCESS] Extracted cookies length:', cookies?.length || 0);
+              console.log('[SUCCESS] Session data:', sessionData);
+              
+              try {
+                console.log('[UI] Calling store authenticateWithWebView with:', sessionData);
+                // Use the store to save the authentication
+                await authenticateWithWebView(sessionData);
                 
                 Alert.alert(
-                  'Experiment Success! 🎉',
-                  `Successfully extracted ${cookies?.length || 0} characters of session data. This proves WebView auth is possible!`,
+                  'WebView Authentication Success! 🎉',
+                  `Successfully authenticated with Gradescope via WebView!\n\n✅ Session cookies stored securely\n✅ Ready to sync assignments\n✅ No password needed`,
                   [
                     {
-                      text: 'Close Experiment',
+                      text: 'Continue',
+                      onPress: () => {
+                        setShowWebViewAuthModal(false);
+                        // Refresh courses to show the new connection
+                        refetchCourses();
+                      }
+                    }
+                  ]
+                );
+              } catch (error) {
+                console.error('[ERROR] Failed to save WebView auth:', error);
+                Alert.alert(
+                  'Authentication Error',
+                  `Failed to save WebView authentication: ${error}`,
+                  [
+                    {
+                      text: 'Close',
                       onPress: () => setShowWebViewAuthModal(false)
                     }
                   ]
                 );
-              }}
+              }
+            }}
               onAuthFailure={(error) => {
                 console.log('[ERROR] WebView auth failed:', error);
                 
@@ -1346,6 +1442,30 @@ export default function ProfileScreen() {
               onClose={() => setShowWebViewAuthModal(false)}
             />
           </View>
+        </View>
+      </Modal>
+
+      {/* EXPERIMENTAL: Direct Client Test Modal */}
+      <Modal
+        visible={showExperimentalTestModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={{ flex: 1 }}>
+          <View style={{ 
+            flexDirection: 'row', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            padding: 16, 
+            borderBottomWidth: 1, 
+            borderBottomColor: '#E0E0E0' 
+          }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold' }}>🧪 Experimental Test</Text>
+            <TouchableOpacity onPress={() => setShowExperimentalTestModal(false)}>
+              <MaterialIcons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          <ExperimentalGradescopeTest />
         </View>
       </Modal>
     </SafeAreaView>

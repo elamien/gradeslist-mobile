@@ -25,10 +25,24 @@ export interface PlatformConnection {
   credentials?: PlatformCredentials;
 }
 
+export type AuthMethod = 'webview' | 'password' | 'none';
+
+export interface WebViewAuthState {
+  method: AuthMethod;
+  isValid: boolean;
+  userId?: string;
+  extractedAt?: Date;
+  expiresAt?: Date;
+}
+
 interface AppState {
   // Connection state
   connections: PlatformConnection[];
   credentialsLoaded: boolean; // Track if credentials have been loaded from secure storage
+  
+  // WebView authentication state
+  gradescopeAuthMethod: AuthMethod;
+  webViewAuthState: WebViewAuthState;
   
   // UI state
   selectedConnection: PlatformConnection | null;
@@ -60,6 +74,13 @@ interface AppState {
   toggleCourseSelection: (courseId: string) => void;
   setShowCompletedTasks: (show: boolean) => void;
   setSelectedTerm: (season: 'spring' | 'summer' | 'fall' | 'winter', year: number) => void;
+  
+  // WebView Auth Actions
+  setGradescopeAuthMethod: (method: AuthMethod) => void;
+  updateWebViewAuthState: (authState: Partial<WebViewAuthState>) => void;
+  authenticateWithWebView: (sessionData: any) => Promise<void>;
+  clearWebViewAuth: () => Promise<void>;
+  refreshWebViewAuthState: () => Promise<void>;
   
   // Notification actions
   setNotificationsEnabled: (enabled: boolean) => void;
@@ -116,6 +137,13 @@ export const useAppStore = create<AppState>()(
       selectedYear: 2025,
       selectedCourseIds: [],
       showCompletedTasks: false,
+      
+      // WebView Auth initial state
+      gradescopeAuthMethod: 'password', // Default to current method
+      webViewAuthState: {
+        method: 'none',
+        isValid: false,
+      },
       
       // Notification initial state
       notificationsEnabled: false,
@@ -223,6 +251,103 @@ export const useAppStore = create<AppState>()(
 
       setPushToken: (token) =>
         set({ pushToken: token }),
+
+      // WebView Auth Actions
+      setGradescopeAuthMethod: (method) =>
+        set({ gradescopeAuthMethod: method }),
+
+      updateWebViewAuthState: (authState) =>
+        set((state) => ({
+          webViewAuthState: { ...state.webViewAuthState, ...authState }
+        })),
+
+      authenticateWithWebView: async (sessionData) => {
+        try {
+          const { GradescopeWebViewAuthService } = await import('../services/gradescopeWebViewAuthService');
+          
+          // Parse and validate the session data
+          const result = GradescopeWebViewAuthService.parseWebViewAuthData(sessionData);
+          
+          if (result.success && result.sessionData) {
+            // Store session data securely
+            await GradescopeWebViewAuthService.storeSessionData(result.sessionData);
+            
+            // Update store state
+            set((state) => ({
+              gradescopeAuthMethod: 'webview',
+              webViewAuthState: {
+                method: 'webview',
+                isValid: true,
+                userId: result.sessionData?.userId,
+                extractedAt: result.sessionData?.extractedAt,
+                expiresAt: result.sessionData?.expiresAt,
+              },
+              // Update Gradescope connection status
+              connections: state.connections.map((conn) =>
+                conn.id === 'gradescope'
+                  ? { ...conn, isConnected: true }
+                  : conn
+              ),
+            }));
+            
+            console.log('[WebViewAuth] Successfully authenticated with WebView');
+          } else {
+            throw new Error(result.error || 'Failed to parse session data');
+          }
+        } catch (error) {
+          console.error('[WebViewAuth] Authentication failed:', error);
+          throw error;
+        }
+      },
+
+      clearWebViewAuth: async () => {
+        try {
+          const { GradescopeWebViewAuthService } = await import('../services/gradescopeWebViewAuthService');
+          await GradescopeWebViewAuthService.clearStoredSession();
+          
+          set((state) => ({
+            gradescopeAuthMethod: 'password', // Fallback to password auth
+            webViewAuthState: {
+              method: 'none',
+              isValid: false,
+            },
+            // Optionally disconnect Gradescope if using WebView auth
+            connections: state.connections.map((conn) =>
+              conn.id === 'gradescope' && state.gradescopeAuthMethod === 'webview'
+                ? { ...conn, isConnected: false }
+                : conn
+            ),
+          }));
+          
+          console.log('[WebViewAuth] WebView authentication cleared');
+        } catch (error) {
+          console.error('[WebViewAuth] Failed to clear authentication:', error);
+        }
+      },
+
+      refreshWebViewAuthState: async () => {
+        try {
+          const { GradescopeWebViewAuthService } = await import('../services/gradescopeWebViewAuthService');
+          const sessionInfo = await GradescopeWebViewAuthService.getSessionInfo();
+          
+          set((state) => ({
+            webViewAuthState: {
+              ...state.webViewAuthState,
+              isValid: sessionInfo.isValid,
+              userId: sessionInfo.userId,
+              extractedAt: sessionInfo.extractedAt,
+              expiresAt: sessionInfo.expiresAt,
+            }
+          }));
+          
+          // If session is invalid, clear auth
+          if (!sessionInfo.isValid && _get().gradescopeAuthMethod === 'webview') {
+            await _get().clearWebViewAuth();
+          }
+        } catch (error) {
+          console.error('[WebViewAuth] Failed to refresh auth state:', error);
+        }
+      },
     }),
     {
       name: 'app-store',
@@ -241,6 +366,15 @@ export const useAppStore = create<AppState>()(
         notificationsEnabled: state.notificationsEnabled,
         notificationPreferences: state.notificationPreferences,
         pushToken: state.pushToken,
+        // WebView auth state (session data stored securely in SecureStore)
+        gradescopeAuthMethod: state.gradescopeAuthMethod,
+        webViewAuthState: {
+          ...state.webViewAuthState,
+          // Don't persist sensitive session details, just the method and validity
+          userId: undefined,
+          extractedAt: undefined,
+          expiresAt: undefined,
+        },
       }),
     }
   )

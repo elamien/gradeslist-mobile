@@ -14,20 +14,20 @@ interface ServerResponse<T> {
 
 interface CourseResponse {
   success: boolean;
-  courses: Array<{
+  courses: {
     id: string;
     name: string;
     term: string;
     url: string;
     platform: string;
-  }>;
+  }[];
   term: string;
   count: number;
 }
 
 interface AssignmentResponse {
   success: boolean;
-  assignments: Array<{
+  assignments: {
     id: string;
     title: string;
     due_date: string | null;
@@ -40,7 +40,7 @@ interface AssignmentResponse {
     platform: string;
     url: string;
     _debug_had_due_date: boolean;
-  }>;
+  }[];
   courseId: string;
   count: number;
 }

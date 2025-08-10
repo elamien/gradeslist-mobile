@@ -17,6 +17,8 @@ export function useOfflineAssignments() {
     selectedTerm,
     selectedCourseIds,
     credentialsLoaded,
+    gradescopeAuthMethod,
+    webViewAuthState,
   } = useAppStore();
 
   // Local state for SQLite data (shows immediately)
@@ -64,14 +66,27 @@ export function useOfflineAssignments() {
       // Fetch from each connected platform
       for (const connection of connectedPlatforms) {
         try {
-          if (!connection.credentials) {
+          // Check for credentials or WebView auth
+          const hasCredentials = connection.credentials;
+          const hasWebViewAuth = connection.id === 'gradescope' && 
+                                 gradescopeAuthMethod === 'webview' && 
+                                 webViewAuthState.isValid;
+          
+          if (!hasCredentials && !hasWebViewAuth) {
             console.error(`No credentials found for ${connection.id}`);
             continue;
           }
           
+          // For WebView auth, provide minimal credentials structure
+          const credentials = hasWebViewAuth ? 
+            { webviewAuth: true } : 
+            connection.credentials;
+          
+          console.log(`[API] Fetching assignments for ${connection.id} with ${hasWebViewAuth ? 'WebView auth' : 'credentials'}`);
+          
           const assignments = await universalAPI.getAssignments(
             connection.id as 'canvas' | 'gradescope',
-            connection.credentials,
+            credentials,
             selectedTerm,
             selectedCourseIds
           );
