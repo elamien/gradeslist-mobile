@@ -1,220 +1,109 @@
-// Server-based Gradescope API - calls our Node.js server instead of direct scraping
-import { PlatformCredentials } from '../../store/useAppStore';
+// Secure Gradescope Client - WebView authentication only
 import { GradescopeAssignment, GradescopeCourseList } from './types';
+import { GradescopeWebViewClient } from './webview-client';
+import { GradescopeWebViewAuthService } from '../../services/gradescopeWebViewAuthService';
 
-// Configure server URL - update this when you deploy
-const SERVER_BASE_URL = 'https://gradeslist-mobile.vercel.app';
-
-interface ServerResponse<T> {
-  success: boolean;
-  error?: string;
-  message?: string;
-  data?: T;
-}
-
-interface CourseResponse {
-  success: boolean;
-  courses: {
-    id: string;
-    name: string;
-    term: string;
-    url: string;
-    platform: string;
-  }[];
-  term: string;
-  count: number;
-}
-
-interface AssignmentResponse {
-  success: boolean;
-  assignments: {
-    id: string;
-    title: string;
-    due_date: string | null;
-    submissions_status: string;
-    status: string;
-    grade: number | null;
-    points: string | null;
-    submission_id: string | null;
-    course_id: string;
-    platform: string;
-    url: string;
-    _debug_had_due_date: boolean;
-  }[];
-  courseId: string;
-  count: number;
-}
+// Authentication method type (only webview supported for security)
+export type GradescopeAuthMethod = 'webview' | 'none';
 
 /**
- * Make authenticated request to our server
+ * Test Gradescope connection - WebView only (secure)
  */
-async function makeServerRequest<T>(
-  endpoint: string, 
-  credentials: PlatformCredentials,
-  additionalData: any = {}
-): Promise<T> {
-  if (!credentials.username || !credentials.password) {
-    throw new Error('Username and password are required for server-based authentication');
-  }
-
-  const url = `${SERVER_BASE_URL}/api/gradescope${endpoint}`;
-  
-  console.log(`Making server request to: ${url}`);
+export async function testGradescopeConnection(): Promise<{ success: boolean; method: GradescopeAuthMethod }> {
+  console.log('[GradescopeAPI] Testing WebView connection...');
   
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: credentials.username,
-        password: credentials.password,
-        ...additionalData
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Server error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    if (!data.success) {
-      throw new Error(data.message || data.error || 'Server request failed');
-    }
-
-    return data as T;
-  } catch (error) {
-    if (error instanceof Error) {
-      // Check for common network errors
-      if (error.message.includes('Failed to fetch') || error.message.includes('Network request failed')) {
-        throw new Error('Cannot connect to server. Make sure the server is running on 192.168.0.250:3001');
+    const webViewAuth = await GradescopeWebViewAuthService.isSessionValid();
+    if (webViewAuth) {
+      console.log('[GradescopeAPI] Found valid WebView session, testing connection...');
+      const webViewWorking = await GradescopeWebViewClient.testConnection();
+      if (webViewWorking) {
+        console.log('[GradescopeAPI] WebView connection successful');
+        return { success: true, method: 'webview' };
       }
-      throw error;
     }
-    throw new Error('Unknown error occurred while contacting server');
-  }
-}
-
-/**
- * Test server connection and authentication
- */
-export async function testServerGradescopeConnection(credentials: PlatformCredentials): Promise<boolean> {
-  try {
-    console.log('Testing server-based Gradescope connection...');
-    await makeServerRequest('/test', credentials);
-    console.log('Server connection test successful');
-    return true;
   } catch (error) {
-    console.error('Server connection test failed:', error);
-    return false;
+    console.log('[GradescopeAPI] WebView connection failed:', error);
   }
+  
+  console.log('[GradescopeAPI] No WebView session found - user needs to authenticate');
+  return { success: false, method: 'none' };
 }
 
 /**
- * Fetch courses from server
+ * Fetch courses - WebView only (secure)
  */
-export async function fetchServerGradescopeCourses(
-  filterTerm?: string,
-  credentials?: PlatformCredentials
+export async function fetchGradescopeCourses(
+  filterTerm?: string
 ): Promise<GradescopeCourseList> {
-  if (!credentials) {
-    throw new Error('Credentials are required for server-based course fetching');
-  }
-
+  console.log('[GradescopeAPI] Fetching courses with WebView...');
+  
   try {
-    const response = await makeServerRequest<CourseResponse>(
-      '/courses', 
-      credentials,
-      filterTerm ? { term: filterTerm } : {}
-    );
-
-    console.log(`Server returned ${response.courses.length} courses`);
-    console.log('Course details from server:', response.courses.map(c => `${c.name} - ${c.term}`));
-
-    // Convert server response to expected format
-    const result: GradescopeCourseList = {
-      student: {},
-      instructor: {}
-    };
-
-    response.courses.forEach((course, index) => {
-      result.student[course.id] = {
-        id: course.id,
-        name: course.name,
-        term: course.term
-      };
-    });
-
-    return result;
+    const webViewAuth = await GradescopeWebViewAuthService.isSessionValid();
+    if (!webViewAuth) {
+      throw new Error('No valid WebView session. Please authenticate via WebView first.');
+    }
+    
+    console.log('[GradescopeAPI] Using WebView client for courses');
+    const courses = await GradescopeWebViewClient.fetchCourses(filterTerm);
+    console.log(`[GradescopeAPI] WebView returned ${Object.keys(courses.student).length} courses`);
+    return courses;
   } catch (error) {
-    console.error('Error fetching courses from server:', error);
-    throw error;
+    console.error('[GradescopeAPI] WebView course fetch failed:', error);
+    throw new Error('Failed to fetch courses. Please re-authenticate via WebView.');
   }
 }
 
 /**
- * Fetch assignments from server using working endpoint
+ * Fetch assignments - WebView only (secure)
  */
-export async function fetchServerGradescopeAssignments(
-  courseId: string,
-  credentials?: PlatformCredentials
+export async function fetchGradescopeAssignments(
+  courseId: string
 ): Promise<GradescopeAssignment[]> {
-  if (!credentials) {
-    throw new Error('Credentials are required for server-based assignment fetching');
-  }
-
+  console.log(`[GradescopeAPI] Fetching assignments for course ${courseId} with WebView...`);
+  
   try {
-    const response = await makeServerRequest<AssignmentResponse>(
-      '/assignments-working',
-      credentials,
-      { courseId }
-    );
-
-    console.log(`Server returned ${response.assignments.length} assignments for course ${courseId}`);
-    console.log('[DEBUG] First assignment from server:', response.assignments[0]);
-
-    // Convert server response to expected format - dates already parsed by working logic
-    return response.assignments.map(assignment => {
-      // Dates are already properly parsed as ISO strings by the working endpoint
-      let dueDate = null;
-      if (assignment.due_date) {
-        try {
-          dueDate = new Date(assignment.due_date);
-          console.log(`Working endpoint provided due date for ${assignment.title}: ${assignment.due_date}`);
-        } catch (error) {
-          console.warn(`Invalid due date from working endpoint for ${assignment.id}:`, assignment.due_date);
-        }
-      }
-      
-      return {
-        id: assignment.id,
-        title: assignment.title,
-        due_date: dueDate,
-        submissions_status: assignment.submissions_status,
-        grade: assignment.grade,
-        points: assignment.points,
-        submission_id: assignment.submission_id || null,
-        _debug_had_due_date: assignment._debug_had_due_date,
-        _debug_raw_due_date: assignment.due_date
-      };
-    });
+    const webViewAuth = await GradescopeWebViewAuthService.isSessionValid();
+    if (!webViewAuth) {
+      throw new Error('No valid WebView session. Please authenticate via WebView first.');
+    }
+    
+    console.log('[GradescopeAPI] Using WebView client for assignments');
+    const assignments = await GradescopeWebViewClient.fetchAssignments(courseId);
+    console.log(`[GradescopeAPI] WebView returned ${assignments.length} assignments`);
+    return assignments;
   } catch (error) {
-    console.error('Error fetching assignments from server:', error);
-    throw error;
+    console.error('[GradescopeAPI] WebView assignment fetch failed:', error);
+    throw new Error('Failed to fetch assignments. Please re-authenticate via WebView.');
   }
 }
 
 /**
- * Authenticate using server (for compatibility with existing code)
+ * Get current authentication method
  */
-export async function authenticateServerGradescope(email: string, password: string): Promise<string> {
+export async function getCurrentAuthMethod(): Promise<GradescopeAuthMethod> {
   try {
-    await makeServerRequest('/test', { username: email, password });
-    return 'server-authenticated'; // Return a placeholder token
+    const hasWebViewSession = await GradescopeWebViewAuthService.isSessionValid();
+    if (hasWebViewSession) return 'webview';
   } catch (error) {
-    throw new Error(`Server authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.log('[GradescopeAPI] Error checking WebView session:', error);
   }
+  
+  return 'none'; // Only WebView authentication supported
 }
+
+// =============================================================================
+// SECURITY UPGRADE COMPLETE ✅
+// 
+// Removed all password-based authentication for security:
+// - No credential transmission over network
+// - No password storage in app or server  
+// - Session-based auth via secure WebView only
+// - Direct Gradescope access with better performance
+// 
+// Benefits:
+// - 🔒 Enhanced security (no password exposure)
+// - ⚡ Better performance (direct scraping)
+// - 📱 Superior UX (browser-style login)
+// - 🎯 Accurate data (real titles, proper dates)
+// =============================================================================

@@ -4,9 +4,10 @@
 import { PlatformCredentials } from '../../store/useAppStore';
 import { fetchCanvasAssignments, fetchCanvasCourses, testCanvasConnection } from '../canvas/client';
 import {
-    fetchServerGradescopeAssignments as fetchGradescopeAssignments,
-    fetchServerGradescopeCourses as fetchGradescopeCourses,
-    testServerGradescopeConnection as testGradescopeConnection
+    fetchGradescopeAssignments,
+    fetchGradescopeCourses,
+    testGradescopeConnection,
+    getCurrentAuthMethod
 } from '../gradescope/client';
 import {
     mapCanvasAssignmentsToUniversal,
@@ -42,13 +43,15 @@ export async function getCanvasAssignments(
 
 /**
  * Fetch assignments from Gradescope and return in universal format
+ * Uses secure WebView authentication only
  */
 export async function getGradescopeAssignments(
-  courseId: string,
-  credentials: PlatformCredentials
+  courseId: string
 ): Promise<UniversalAssignment[]> {
   try {
-    const gradescopeAssignments = await fetchGradescopeAssignments(courseId, credentials);
+    // Use WebView client (secure, no credentials needed)
+    const gradescopeAssignments = await fetchGradescopeAssignments(courseId);
+    
     return mapGradescopeAssignmentsToUniversal(gradescopeAssignments).map(assignment => ({
       ...assignment,
       platform: 'gradescope' as const
@@ -108,7 +111,7 @@ export async function getAssignments(
     }
     
     // For Gradescope, we need to first fetch courses to get course IDs
-    const courseList = await getGradescopeCourses(selectedTerm, credentials);
+    const courseList = await getGradescopeCourses(selectedTerm);
     const allAssignments: UniversalAssignment[] = [];
     
     // Get all courses (student and instructor)
@@ -127,7 +130,7 @@ export async function getAssignments(
     for (const course of selectedCourses) {
       try {
         console.log(`[DEBUG] Processing course: ${course.name} (${course.id})`);
-        const assignments = await getGradescopeAssignments(course.id, credentials);
+        const assignments = await getGradescopeAssignments(course.id);
         console.log(`[DEBUG] Got ${assignments.length} raw assignments, first one:`, assignments[0]);
         
         // Add course name and course_id to assignments
@@ -173,13 +176,15 @@ export async function getCanvasCourses(
 
 /**
  * Fetch courses from Gradescope and return in universal format
+ * Uses secure WebView authentication only
  */
 export async function getGradescopeCourses(
-  filterTerm: string,
-  credentials: PlatformCredentials
+  filterTerm: string
 ): Promise<{ student: UniversalCourse[], instructor: UniversalCourse[] }> {
   try {
-    const gradescopeCourseList = await fetchGradescopeCourses(filterTerm, credentials);
+    // Use WebView client (secure, no credentials needed)
+    const gradescopeCourseList = await fetchGradescopeCourses(filterTerm);
+    
     const universalCourseList = mapGradescopeCourseListToUniversal(gradescopeCourseList);
     
     return {
@@ -210,7 +215,7 @@ export async function getCourses(
     if (!credentials.token && !credentials.username) throw new Error('Canvas API token is required.');
     return await getCanvasCourses(selectedTerm, credentials);
   } else {
-    const courseList = await getGradescopeCourses(selectedTerm, credentials);
+    const courseList = await getGradescopeCourses(selectedTerm);
     return [...courseList.student, ...courseList.instructor];
   }
 }
@@ -221,18 +226,21 @@ export async function getCourses(
 
 /**
  * Test connection to any platform
+ * Uses secure WebView authentication for Gradescope
  */
 export async function testConnection(
   platform: 'canvas' | 'gradescope',
-  credentials: PlatformCredentials
+  credentials?: PlatformCredentials
 ): Promise<boolean> {
   if (platform === 'canvas') {
-    if (!credentials.token && !credentials.username) {
+    if (!credentials || (!credentials.token && !credentials.username)) {
       throw new Error('Canvas API token is required.');
     }
     return await testCanvasConnection(credentials);
   } else {
-    return await testGradescopeConnection(credentials);
+    // Use secure WebView authentication only
+    const result = await testGradescopeConnection();
+    return result.success;
   }
 }
 

@@ -13,6 +13,8 @@ export interface PlatformCredentials {
   // New fields for WebView proxy pattern
   proxyReady?: boolean;
   loginData?: any;
+  // WebView auth flag
+  webviewAuth?: boolean;
 }
 
 export interface PlatformConnection {
@@ -25,7 +27,7 @@ export interface PlatformConnection {
   credentials?: PlatformCredentials;
 }
 
-export type AuthMethod = 'webview' | 'password' | 'none';
+export type AuthMethod = 'webview' | 'none';
 
 export interface WebViewAuthState {
   method: AuthMethod;
@@ -69,6 +71,7 @@ interface AppState {
   updateConnection: (id: string, updates: Partial<PlatformConnection>) => void;
   connectPlatform: (id: string, credentials: PlatformCredentials) => Promise<void>;
   disconnectPlatform: (id: string) => Promise<void>;
+  testGradescopeConnection: () => Promise<{ success: boolean; method: AuthMethod }>;
   setSelectedConnection: (connection: PlatformConnection | null) => void;
   setSelectedCourseIds: (courseIds: string[]) => void;
   toggleCourseSelection: (courseId: string) => void;
@@ -81,6 +84,10 @@ interface AppState {
   authenticateWithWebView: (sessionData: any) => Promise<void>;
   clearWebViewAuth: () => Promise<void>;
   refreshWebViewAuthState: () => Promise<void>;
+  
+  // Session Management
+  initializeApp: () => Promise<void>;
+  validateSessions: () => Promise<boolean>;
   
   // Notification actions
   setNotificationsEnabled: (enabled: boolean) => void;
@@ -101,7 +108,7 @@ const initialConnections: PlatformConnection[] = [
   {
     id: 'gradescope',
     name: 'Gradescope',
-    description: 'Link Gradescope to view graded assignments and feedback',
+    description: 'Secure WebView login - no password storage required',
     icon: '📊',
     color: '#3B82F6',
     isConnected: false,
@@ -139,7 +146,7 @@ export const useAppStore = create<AppState>()(
       showCompletedTasks: false,
       
       // WebView Auth initial state
-      gradescopeAuthMethod: 'password', // Default to current method
+      gradescopeAuthMethod: 'none', // Default to no auth until WebView login
       webViewAuthState: {
         method: 'none',
         isValid: false,
@@ -175,8 +182,10 @@ export const useAppStore = create<AppState>()(
             throw new Error('Invalid credentials - connection test failed');
           }
           
-          // Store credentials securely
-          await storeCredentials(id, credentials);
+          // Store credentials securely (only for Canvas)
+          if (id !== 'gradescope') {
+            await storeCredentials(id, credentials);
+          }
           
           // Update connection state
           set((state) => ({
@@ -189,6 +198,42 @@ export const useAppStore = create<AppState>()(
           }));
         } catch (error) {
           console.error('Failed to connect platform:', error);
+          throw error;
+        }
+      },
+      
+      // New method for hybrid connection testing
+      testGradescopeConnection: async () => {
+        try {
+          const { testGradescopeConnection, getCurrentAuthMethod } = await import('../integrations/gradescope/client');
+          
+          // Get current credentials for fallback
+          const currentConnection = _get().connections.find(c => c.id === 'gradescope');
+          const storedCredentials = await getCredentials('gradescope');
+          const credentials = currentConnection?.credentials || storedCredentials;
+          
+          // Test with hybrid approach
+          const result = await testGradescopeConnection(credentials);
+          const authMethod = await getCurrentAuthMethod();
+          
+          // Update state based on result
+          set((state) => ({
+            gradescopeAuthMethod: result.method,
+            webViewAuthState: {
+              ...state.webViewAuthState,
+              method: result.method,
+              isValid: result.success,
+            },
+            connections: state.connections.map((conn) =>
+              conn.id === 'gradescope'
+                ? { ...conn, isConnected: result.success }
+                : conn
+            ),
+          }));
+          
+          return result;
+        } catch (error) {
+          console.error('Failed to test Gradescope connection:', error);
           throw error;
         }
       },
@@ -306,12 +351,12 @@ export const useAppStore = create<AppState>()(
           await GradescopeWebViewAuthService.clearStoredSession();
           
           set((state) => ({
-            gradescopeAuthMethod: 'password', // Fallback to password auth
+            gradescopeAuthMethod: 'none', // Clear auth method
             webViewAuthState: {
               method: 'none',
               isValid: false,
             },
-            // Optionally disconnect Gradescope if using WebView auth
+            // Disconnect Gradescope if using WebView auth
             connections: state.connections.map((conn) =>
               conn.id === 'gradescope' && state.gradescopeAuthMethod === 'webview'
                 ? { ...conn, isConnected: false }
@@ -346,6 +391,80 @@ export const useAppStore = create<AppState>()(
           }
         } catch (error) {
           console.error('[WebViewAuth] Failed to refresh auth state:', error);
+        }
+      },
+      
+      // Session Management & Renewal Logic
+      initializeApp: async () => {
+        try {
+          console.log('[AppStore] Initializing app - checking auth states...');
+          
+          // Load credentials from secure storage
+          const connections = _get().connections;
+          const updatedConnections = [];
+          
+          for (const conn of connections) {
+            const storedCredentials = await getCredentials(conn.id);
+            if (storedCredentials) {
+              updatedConnections.push({
+                ...conn,
+                isConnected: true,
+                credentials: storedCredentials
+              });
+            } else {
+              updatedConnections.push(conn);
+            }
+          }
+          
+          set({ connections: updatedConnections, credentialsLoaded: true });
+          
+          // Check WebView auth status for Gradescope
+          const gradescopeConn = updatedConnections.find(c => c.id === 'gradescope');
+          if (gradescopeConn) {
+            await _get().refreshWebViewAuthState();
+            
+            // Test hybrid connection to set correct auth method
+            const result = await _get().testGradescopeConnection();
+            console.log(`[AppStore] Gradescope connection status: ${result.success ? 'connected' : 'disconnected'} via ${result.method}`);
+          }
+          
+          console.log('[AppStore] App initialization complete');
+        } catch (error) {
+          console.error('[AppStore] Failed to initialize app:', error);
+        }
+      },
+      
+      validateSessions: async () => {
+        try {
+          console.log('[AppStore] Validating all sessions...');
+          
+          // Validate WebView session
+          if (_get().gradescopeAuthMethod === 'webview') {
+            const { GradescopeWebViewAuthService } = await import('../services/gradescopeWebViewAuthService');
+            const sessionInfo = await GradescopeWebViewAuthService.getSessionInfo();
+            
+            if (!sessionInfo.isValid) {
+              console.log('[AppStore] WebView session invalid, clearing auth');
+              await _get().clearWebViewAuth();
+              return false;
+            }
+            
+            // Check if session is expiring soon (within 1 hour)
+            if (sessionInfo.expiresAt) {
+              const timeUntilExpiry = sessionInfo.expiresAt.getTime() - Date.now();
+              const oneHour = 60 * 60 * 1000;
+              
+              if (timeUntilExpiry < oneHour) {
+                console.log('[AppStore] WebView session expiring soon, should refresh');
+                // Could trigger refresh prompt here
+              }
+            }
+          }
+          
+          return true;
+        } catch (error) {
+          console.error('[AppStore] Session validation failed:', error);
+          return false;
         }
       },
     }),

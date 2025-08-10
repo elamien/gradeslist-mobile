@@ -29,6 +29,7 @@ export default function ProfileScreen() {
     setSelectedConnection, 
     connectPlatform, 
     disconnectPlatform,
+    testGradescopeConnection,
     setSelectedTerm,
     toggleCourseSelection,
     // WebView Auth
@@ -42,12 +43,11 @@ export default function ProfileScreen() {
   const { data: availableCourses, isLoading: coursesLoading, refetch: refetchCourses } = useCourses();
   
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [showGradescopeCredentialsModal, setShowGradescopeCredentialsModal] = useState(false);
+  // Removed showGradescopeCredentialsModal - WebView only for security
   const [showWebViewAuthModal, setShowWebViewAuthModal] = useState(false);
   const [showExperimentalTestModal, setShowExperimentalTestModal] = useState(false);
   
-  const [gradescopeEmail, setGradescopeEmail] = useState('');
-  const [gradescopePassword, setGradescopePassword] = useState('');
+  // Removed password authentication - WebView only for security
   
   const _gradescopeProxyRef = useRef<GradescopeProxyMethods>(null);
   
@@ -79,7 +79,14 @@ export default function ProfileScreen() {
     try {
       console.log('handleConnect called with:', connection);
       setSelectedConnection(connection);
-      // Always show credential collection modal (no more WebView step)
+      
+      // For Gradescope, show auth method choice
+      if (connection.id === 'gradescope') {
+        handleGradescopeConnect();
+        return;
+      }
+      
+      // For other platforms, show credential modal
       setUsername('');
       setPassword('');
       setShowPassword(connection.id !== 'canvas'); // Show password except for Canvas
@@ -89,48 +96,16 @@ export default function ProfileScreen() {
       Alert.alert('Error', 'Failed to open connection dialog');
     }
   };
-
-
-
-  const handleGradescopeCredentialsSubmit = async () => {
-    if (!gradescopeEmail.trim() || !gradescopePassword.trim()) {
-      Alert.alert('Error', 'Please enter both email and password');
-      return;
-    }
-
-    setIsConnecting(true);
-
-    try {
-      console.log('Connecting Gradescope with server-based credentials...');
-      
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      
-      // Store real credentials for server-based auth
-      await connectPlatform('gradescope', { 
-        proxyReady: true, 
-        loginData: { serverBased: true },
-        // Real credentials for server
-        username: gradescopeEmail.trim(),
-        password: gradescopePassword.trim(),
-        cookies: 'proxy-session-verified', // Keep this as marker
-        lastLogin: new Date().toISOString()
-      });
-
-      // Close modal and clear form on success
-      setShowGradescopeCredentialsModal(false);
-      setGradescopeEmail('');
-      setGradescopePassword('');
-      
-      Alert.alert('Success', 'Successfully connected to Gradescope via server!');
-      
-    } catch (error) {
-      console.error('Gradescope server connection error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to Gradescope server';
-      Alert.alert('Connection Failed', errorMessage);
-    } finally {
-      setIsConnecting(false);
-    }
+  
+  const handleGradescopeConnect = () => {
+    // Direct WebView authentication - no password option for security
+    console.log('Opening secure WebView authentication');
+    setShowWebViewAuthModal(true);
   };
+
+
+
+  // Removed handleGradescopeCredentialsSubmit - WebView only for security
 
   const handleDisconnect = (connection: any) => {
     Alert.alert(
@@ -1211,130 +1186,7 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
-      {/* Gradescope Credentials Modal */}
-      <Modal
-        visible={showGradescopeCredentialsModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowGradescopeCredentialsModal(false)}
-      >
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: 20
-        }}>
-          <View style={{
-            backgroundColor: 'white',
-            borderRadius: 20,
-            padding: 20,
-            width: '100%',
-            maxWidth: 400
-          }}>
-            <View style={{ alignItems: 'center', marginBottom: 20 }}>
-              <View style={{
-                width: 60,
-                height: 60,
-                borderRadius: 30,
-                backgroundColor: '#3B82F620',
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginBottom: 12
-              }}>
-                <Text style={{ fontSize: 30 }}>📊</Text>
-              </View>
-              <Text style={{ fontSize: 20, fontWeight: '600', marginBottom: 4 }}>
-                Gradescope Credentials
-              </Text>
-              <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
-                Enter your Gradescope login to fetch real course data
-              </Text>
-            </View>
-
-            <View style={{ marginBottom: 20 }}>
-              <Text style={{ fontSize: 16, fontWeight: '500', marginBottom: 8 }}>
-                Email
-              </Text>
-              <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#e5e5e5',
-                  borderRadius: 8,
-                  padding: 12,
-                  fontSize: 16,
-                  backgroundColor: '#f9f9f9'
-                }}
-                placeholder="Enter your Gradescope email"
-                value={gradescopeEmail}
-                onChangeText={setGradescopeEmail}
-                autoCapitalize="none"
-                autoComplete="email"
-                keyboardType="email-address"
-              />
-            </View>
-
-            <View style={{ marginBottom: 24 }}>
-              <Text style={{ fontSize: 16, fontWeight: '500', marginBottom: 8 }}>
-                Password
-              </Text>
-              <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#e5e5e5',
-                  borderRadius: 8,
-                  padding: 12,
-                  fontSize: 16,
-                  backgroundColor: '#f9f9f9'
-                }}
-                placeholder="Enter your Gradescope password"
-                value={gradescopePassword}
-                onChangeText={setGradescopePassword}
-                secureTextEntry={true}
-                autoComplete="password"
-              />
-            </View>
-
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  backgroundColor: '#f3f4f6',
-                  padding: 12,
-                  borderRadius: 8,
-                  alignItems: 'center'
-                }}
-                onPress={() => {
-                  setShowGradescopeCredentialsModal(false);
-                  setGradescopeEmail('');
-                  setGradescopePassword('');
-                }}
-                disabled={isConnecting}
-              >
-                <Text style={{ fontSize: 16, fontWeight: '500', color: '#666' }}>
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  backgroundColor: '#3B82F6',
-                  padding: 12,
-                  borderRadius: 8,
-                  alignItems: 'center',
-                  opacity: isConnecting ? 0.6 : 1
-                }}
-                onPress={handleGradescopeCredentialsSubmit}
-                disabled={isConnecting}
-              >
-                <Text style={{ fontSize: 16, fontWeight: '500', color: 'white' }}>
-                  {isConnecting ? 'Connecting...' : 'Connect'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* Gradescope Credentials Modal removed for security - WebView only */}
 
       {/* WebView proxy disabled - now using server-side API */}
       {/* Server handles all scraping, no need for WebView proxy */}
@@ -1380,7 +1232,7 @@ export default function ProfileScreen() {
               fontWeight: '600',
               color: '#374151'
             }}>
-              🔬 WebView Auth Experiment
+              🔐 Secure Gradescope Login
             </Text>
             <View style={{ width: 36 }} />
           </View>
