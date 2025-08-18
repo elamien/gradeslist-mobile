@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import CookieManager from '@react-native-cookies/cookies';
 
 // Types for our store
 export interface PlatformCredentials {
@@ -38,6 +39,9 @@ interface AppState {
   selectedSeason: 'spring' | 'summer' | 'fall' | 'winter';
   selectedYear: number;
   
+  // Disconnect/Fresh login state
+  forceFreshLoginNext: boolean;
+  
   // Filter state
   selectedCourseIds: string[]; // Array of course IDs to sync
   showCompletedTasks: boolean;
@@ -55,6 +59,7 @@ interface AppState {
   updateConnection: (id: string, updates: Partial<PlatformConnection>) => void;
   connectPlatform: (id: string, credentials: PlatformCredentials) => Promise<void>;
   disconnectPlatform: (id: string) => Promise<void>;
+  disconnectGradescope: () => Promise<void>;
   setSelectedConnection: (connection: PlatformConnection | null) => void;
   setSelectedCourseIds: (courseIds: string[]) => void;
   toggleCourseSelection: (courseId: string) => void;
@@ -116,6 +121,7 @@ export const useAppStore = create<AppState>()(
       selectedYear: 2025,
       selectedCourseIds: [],
       showCompletedTasks: false,
+      forceFreshLoginNext: false,
       
       // Notification initial state
       notificationsEnabled: false,
@@ -214,6 +220,91 @@ export const useAppStore = create<AppState>()(
         }
       },
 
+      disconnectGradescope: async () => {
+        try {
+          console.log('[Disconnect] Starting comprehensive Gradescope disconnect...');
+          
+          // A) Backend: clear server session & state
+          try {
+            console.log('[Disconnect] Calling backend disconnect endpoint...');
+            const response = await fetch('https://gradeslist-mobile.vercel.app/api/gradescope/disconnect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: 'mobile-user' })
+            });
+            
+            if (response.ok) {
+              const result = await response.json();
+              console.log('[Disconnect] Backend cleared:', result.success);
+            } else {
+              console.warn('[Disconnect] Backend disconnect failed, continuing with client cleanup');
+            }
+          } catch (error) {
+            console.warn('[Disconnect] Backend disconnect error, continuing with client cleanup:', error.message);
+          }
+          
+          // B) Client: purge all Gradescope web data & local app state
+          console.log('[Disconnect] Clearing app state (creds, token, loginData)');
+          
+          // Remove stored credentials from SecureStore
+          await removeCredentials('gradescope');
+          
+          // Clear native cookies for gradescope.com
+          console.log('[Disconnect] Clearing native cookies for gradescope.com');
+          try {
+            // Clear specific Gradescope cookies
+            const gradescopeUrls = [
+              'https://www.gradescope.com',
+              'https://gradescope.com'
+            ];
+            
+            for (const url of gradescopeUrls) {
+              try {
+                // Get all cookies for the domain first
+                const cookies = await CookieManager.get(url);
+                const cookieNames = Object.keys(cookies);
+                
+                // Clear each cookie individually
+                for (const cookieName of cookieNames) {
+                  await CookieManager.clearByName(url, cookieName);
+                }
+                
+                console.log(`[Disconnect] Cleared ${cookieNames.length} cookies for ${url}`);
+              } catch (error) {
+                console.warn(`[Disconnect] Error clearing cookies for ${url}:`, error.message);
+              }
+            }
+          } catch (error) {
+            console.error('[Disconnect] Error during cookie cleanup:', error);
+          }
+          
+          // Clear all cookies as fallback (this might affect other domains)
+          try {
+            await CookieManager.clearAll(true);
+            console.log('[Disconnect] Cleared all cookies as fallback');
+          } catch (error) {
+            console.warn('[Disconnect] ClearAll failed:', error.message);
+          }
+          
+          // Update connection state and set fresh login flag
+          set((state) => ({
+            connections: state.connections.map((conn) =>
+              conn.id === 'gradescope'
+                ? { ...conn, isConnected: false, credentials: undefined }
+                : conn
+            ),
+            forceFreshLoginNext: true // Set flag for next connect
+          }));
+          
+          console.log('[Disconnect] Next connect will force fresh login');
+          console.log('[Disconnect] Comprehensive disconnect completed successfully');
+          
+        } catch (error) {
+          console.error('[Disconnect] Failed to disconnect Gradescope:', error);
+          throw error;
+        }
+      },
+
       setSelectedConnection: (connection) =>
         set({ selectedConnection: connection }),
 
@@ -268,6 +359,7 @@ export const useAppStore = create<AppState>()(
         selectedYear: state.selectedYear,
         selectedCourseIds: state.selectedCourseIds,
         showCompletedTasks: state.showCompletedTasks,
+        forceFreshLoginNext: state.forceFreshLoginNext,
         notificationsEnabled: state.notificationsEnabled,
         notificationPreferences: state.notificationPreferences,
         pushToken: state.pushToken,

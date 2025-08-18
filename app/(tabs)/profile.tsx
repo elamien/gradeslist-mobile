@@ -32,6 +32,7 @@ export default function ProfileScreen() {
     setSelectedConnection, 
     connectPlatform, 
     disconnectPlatform,
+    disconnectGradescope,
     setSelectedTerm,
     toggleCourseSelection
   } = useAppStore();
@@ -172,9 +173,13 @@ export default function ProfileScreen() {
   };
 
   const handleDisconnect = (connection: any) => {
+    const isGradescope = connection.id === 'gradescope';
+    
     Alert.alert(
       'Disconnect Account',
-      `Are you sure you want to disconnect from ${connection.name}?`,
+      isGradescope 
+        ? `Are you sure you want to disconnect from ${connection.name}?\n\nThis will clear all saved login data and require a fresh login next time.`
+        : `Are you sure you want to disconnect from ${connection.name}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
@@ -183,9 +188,20 @@ export default function ProfileScreen() {
           onPress: async () => {
             try {
               LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-              await disconnectPlatform(connection.id);
-              Alert.alert('Success', `Disconnected from ${connection.name}`);
-            } catch {
+              
+              if (isGradescope) {
+                await disconnectGradescope();
+                Alert.alert(
+                  'Disconnected Successfully', 
+                  'Disconnected from Gradescope. Next connect will require login.',
+                  [{ text: 'OK' }]
+                );
+              } else {
+                await disconnectPlatform(connection.id);
+                Alert.alert('Success', `Disconnected from ${connection.name}`);
+              }
+            } catch (error) {
+              console.error('Disconnect error:', error);
               Alert.alert('Error', 'Failed to disconnect account');
             }
           }

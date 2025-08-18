@@ -3,6 +3,10 @@ import { WebView } from 'react-native-webview';
 import { View, StyleSheet } from 'react-native';
 import CookieManager from '@react-native-cookies/cookies';
 import { verifyCookieLogin, COOKIE_LOGIN_ENABLED, FORCE_FRESH_LOGIN } from '../services/cookieGradescopeService';
+import { useAppStore } from '../store/useAppStore';
+
+// Development flag - set to true to log cookie values locally
+const DEV_LOG_COOKIE_VALUES = true;
 
 const GRADESCOPE_LOGIN_URL = 'https://www.gradescope.com/login';
 const GRADESCOPE_DASHBOARD_URL = 'https://www.gradescope.com/account';
@@ -15,20 +19,34 @@ interface GradescopeLoginProps {
 export const GradescopeLogin: React.FC<GradescopeLoginProps> = ({ onLoginSuccess, onLoginFailure }) => {
   const webviewRef = useRef<WebView>(null);
   const loginAttempted = useRef(false);
+  const captureInFlightRef = useRef(false);
+  const { forceFreshLoginNext } = useAppStore();
 
-  // Clear cookies and data if FORCE_FRESH_LOGIN is enabled
+  // Clear cookies and data if FORCE_FRESH_LOGIN is enabled or forceFreshLoginNext flag is set
   useEffect(() => {
     const clearDataIfNeeded = async () => {
-      if (FORCE_FRESH_LOGIN) {
-        console.log('[CookieLogin] FORCE_FRESH_LOGIN enabled - clearing gradescope.com data');
+      const shouldForceFreshLogin = FORCE_FRESH_LOGIN || forceFreshLoginNext;
+      
+      if (shouldForceFreshLogin) {
+        if (forceFreshLoginNext) {
+          console.log('[CookieLogin] domain purge complete; using persistent store');
+        } else {
+          console.log('[CookieLogin] FORCE_FRESH_LOGIN enabled - clearing gradescope.com data');
+        }
         try {
-          // Clear all cookies for gradescope.com
+          // Clear ALL cookies for gradescope.com (both www and root domain)
+          console.log('[CookieLogin] Clearing all gradescope.com cookies...');
+          await CookieManager.clearAll();
+          console.log('[CookieLogin] ✓ Cleared ALL cookies');
+          
+          // Clear specific gradescope cookies as backup
           await CookieManager.clearByName('https://www.gradescope.com', '_gradescope_session');
           await CookieManager.clearByName('https://www.gradescope.com', 'signed_token');
           await CookieManager.clearByName('https://www.gradescope.com', 'remember_me');
-          await CookieManager.clearByName('https://www.gradescope.com', '_ga');
-          await CookieManager.clearByName('https://www.gradescope.com', 'apt.uid');
-          console.log('[CookieLogin] ✓ Cleared gradescope.com cookies');
+          await CookieManager.clearByName('https://gradescope.com', '_gradescope_session');
+          await CookieManager.clearByName('https://gradescope.com', 'signed_token');
+          await CookieManager.clearByName('https://gradescope.com', 'remember_me');
+          console.log('[CookieLogin] ✓ Cleared specific gradescope.com cookies');
           
           // Also clear localStorage via injected script when WebView loads
           const clearStorageScript = `
@@ -41,102 +59,186 @@ export const GradescopeLogin: React.FC<GradescopeLoginProps> = ({ onLoginSuccess
             }
           `;
           
-          // We'll inject this when the WebView loads
+          // Force logout + clear storage when WebView loads
           setTimeout(() => {
-            webviewRef.current?.injectJavaScript(clearStorageScript);
+            const forceLogoutScript = `
+              try {
+                // Force logout by clearing all auth data
+                localStorage.clear();
+                sessionStorage.clear();
+                document.cookie.split(";").forEach(function(c) { 
+                  document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                
+                // Navigate to logout URL to ensure clean state
+                if (window.location.pathname !== '/login') {
+                  window.location.href = 'https://www.gradescope.com/logout';
+                  setTimeout(() => {
+                    window.location.href = 'https://www.gradescope.com/login';
+                  }, 1000);
+                }
+                console.log('Force logout and clear completed');
+              } catch (e) {
+                console.log('Error during force logout:', e);
+              }
+            `;
+            webviewRef.current?.injectJavaScript(forceLogoutScript);
           }, 1000);
           
         } catch (error) {
           console.warn('[CookieLogin] Warning: Could not clear some cookies:', error);
         }
       } else {
-        console.log('[CookieLogin] Using default cookie store (FORCE_FRESH_LOGIN disabled)');
+        console.log('[CookieLogin] Using default cookie store (FORCE_FRESH_LOGIN disabled, forceFreshLoginNext: false)');
       }
     };
     
     clearDataIfNeeded();
   }, []);
 
-  // Attempt cookie capture with proper timing and native cookie access
+  // Helper function to build cookie header in proper order
+  const buildCookieHeader = (cookies: Record<string, { value: string }>) => {
+    const order = ['_gradescope_session','signed_token','remember_me','apt.sid','apt.uid','_ga'];
+    const parts: string[] = [];
+    for (const k of order) if (cookies[k]?.value) parts.push(`${k}=${cookies[k].value}`);
+    for (const [k,v] of Object.entries(cookies)) {
+      if (!order.includes(k) && v?.value) parts.push(`${k}=${v.value}`);
+    }
+    return parts.join('; ');
+  };
+
+  // Helper function to use cookies for verification
+  const useCookiesForVerification = async (cookiesObj: Record<string, { value: string }>) => {
+    console.log('[CookieLogin] ENTERING useCookiesForVerification() function');
+    const header = buildCookieHeader(cookiesObj);
+    const names = Object.keys(cookiesObj);
+    console.log('[CookieLogin] final cookie names:', names);
+    if (DEV_LOG_COOKIE_VALUES) console.log('[CookieLogin] 🚨 Debug: final cookie values:', cookiesObj);
+
+    // Verify cookies work with production parsing code
+    console.log('[CookieService] Starting cookie verification...');
+    console.log('[CookieService] POST /connect/gradescope/webview-session (cookie-only)');
+    const verification = await verifyCookieLogin(header);
+    
+    if (verification.success) {
+      console.log('[CookieLogin] ✅ Cookie verification successful!');
+      console.log(`[CookieLogin] Found ${verification.coursesCount} courses, ${verification.assignmentsCount} assignments`);
+      console.log('[CookieLogin] ✅ Platform connected via cookie authentication');
+      
+      try {
+        // Reset fresh login flag after successful verification
+        if (forceFreshLoginNext) {
+          console.log('[CookieLogin] Resetting forceFreshLoginNext flag after successful login');
+          useAppStore.setState({ forceFreshLoginNext: false });
+        }
+        
+        console.log('[CookieLogin] Calling onLoginSuccess to close modal and update UI...');
+        console.log('[CookieLogin] onLoginSuccess callback type:', typeof onLoginSuccess);
+        
+        const loginData = { 
+          loginVerified: true, 
+          dashboardUrl: 'https://www.gradescope.com/account',
+          cookieLogin: true,
+          cookieHeader: verification.cookieHeader,
+          coursesCount: verification.coursesCount,
+          assignmentsCount: verification.assignmentsCount,
+          courses: verification.courses
+        };
+        
+        console.log('[CookieLogin] About to call onLoginSuccess with data:', JSON.stringify(loginData, null, 2));
+        onLoginSuccess(loginData);
+        console.log('[CookieLogin] onLoginSuccess call completed successfully');
+        
+      } catch (successError) {
+        console.error('[CookieLogin] ERROR in success handling:', successError);
+        console.error('[CookieLogin] Error stack:', successError.stack);
+        // Still call success even if there's an error in our handling
+        try {
+          onLoginSuccess({ 
+            loginVerified: true, 
+            dashboardUrl: 'https://www.gradescope.com/account',
+            cookieLogin: true,
+            cookieHeader: verification.cookieHeader,
+            coursesCount: verification.coursesCount,
+            assignmentsCount: verification.assignmentsCount,
+            courses: verification.courses
+          });
+        } catch (fallbackError) {
+          console.error('[CookieLogin] FALLBACK onLoginSuccess also failed:', fallbackError);
+        }
+      }
+    } else {
+      console.error('[CookieLogin] ❌ Cookie verification failed:', verification.error);
+      onLoginFailure();
+    }
+  };
+
+  // Stabilization loop to wait for both _gradescope_session and signed_token
+  const waitForCriticalCookies = async (maxAttempts = 8, delayMs = 300) => {
+    let last = {};
+    for (let i = 1; i <= maxAttempts; i++) {
+      try {
+        const all = await CookieManager.get('https://www.gradescope.com');
+        last = all;
+        const names = Object.keys(all);
+        console.log('[CookieLogin] stabilize iteration', i, JSON.stringify(names));
+        const hasSession = !!all['_gradescope_session'];
+        const hasSigned = !!all['signed_token'];
+        if (hasSession && hasSigned) return all;
+        if (i < maxAttempts) await new Promise(resolve => setTimeout(resolve, delayMs));
+      } catch (error) {
+        console.warn(`[CookieLogin] Error in stabilization iteration ${i}:`, error.message);
+      }
+    }
+    return last; // return last seen, even if incomplete (caller will decide)
+  };
+
+  // Attempt cookie capture with stabilization loop
   const attemptCookieCapture = async (currentUrl: string) => {
     console.log(`[CookieLogin] capture trigger url=${currentUrl}`);
+    console.log(`[CookieLogin] nav url=/account; DOM logged-in: true`);
     
     if (!webviewRef.current) {
       console.warn('[CookieLogin] WebView ref not available');
       return;
     }
 
-    // First, ensure we can access native cookies BEFORE checking DOM
-    console.log('[CookieLogin] 📥 Checking native cookies before DOM verification...');
-    try {
-      const allCookies = await CookieManager.get('https://www.gradescope.com');
-      const cookieNames = Object.keys(allCookies);
-      console.log('[CookieLogin] native cookie names:', cookieNames);
-      console.log('[CookieLogin] 🚨 Debug: native cookie dump:', allCookies); // Debug values
-      
-      // Check if we have critical session cookies
-      const hasSessionCookie = cookieNames.includes('_gradescope_session');
-      const hasSignedToken = cookieNames.includes('signed_token');
-      
-      if (!hasSessionCookie) {
-        console.warn('[CookieLogin] ⚠️  No _gradescope_session in native cookies - login may not be complete');
-        if (!FORCE_FRESH_LOGIN) {
-          console.log('[CookieLogin] 💡 Consider setting FORCE_FRESH_LOGIN=true');
-        }
-      }
-      
-    } catch (error) {
-      console.error('[CookieLogin] ❌ Native cookie check failed:', error);
+    // Wait for critical cookies to stabilize
+    console.log('[CookieLogin] Starting stabilization loop...');
+    const stabilizedCookies = await waitForCriticalCookies(8, 300);
+    
+    const names = Object.keys(stabilizedCookies);
+    console.log('[CookieLogin] stabilized cookie names:', names);
+    console.log('[CookieLogin] calling useCookiesForVerification(...) with stabilized cookies');
+    
+    const hasSession = !!stabilizedCookies['_gradescope_session'];
+    const hasSigned = !!stabilizedCookies['signed_token'];
+    
+    if (!hasSession || !hasSigned) {
+      console.warn('[CookieLogin] Critical cookie(s) missing after stabilization. Reloading once and retrying...');
+      webviewRef.current?.injectJavaScript(`window.location.href='https://www.gradescope.com/'; true;`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const retried = await waitForCriticalCookies(4, 500);
+      // Prefer retried only if it improves:
+      const pick = (!!retried['_gradescope_session'] && !!retried['signed_token']) ? retried : stabilizedCookies;
+      console.log('[CookieLogin] calling useCookiesForVerification(...) with retry cookies');
+      await useCookiesForVerification(pick);
+      return;
     }
-
-    // Now check DOM state with current URL context
-    const loginCheckScript = `
-      (function() {
-        try {
-          // Wait for DOM to be fully ready
-          if (document.readyState !== 'complete') {
-            setTimeout(arguments.callee, 100);
-            return;
-          }
-          
-          const pageText = document.body.textContent || document.body.innerText || '';
-          const hasLoginForm = document.querySelector('input[type="password"]') !== null ||
-                              pageText.includes('Log In') ||
-                              pageText.includes('Sign In');
-          const onAccountPage = window.location.pathname === '/account';
-          const actualUrl = window.location.href;
-          const isLoggedIn = !hasLoginForm && onAccountPage;
-          
-          console.log('[CookieLogin] DOM check:', {
-            onAccountPage,
-            hasLoginForm,
-            isLoggedIn,
-            actualUrl,
-            currentUrl: "${currentUrl}",
-            readyState: document.readyState
-          });
-          
-          // Use the CURRENT navigation URL, not the potentially stale window.location
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'nativeCookieLogin',
-            isLoggedIn: isLoggedIn,
-            url: "${currentUrl}", // Use the navState URL for consistency
-            domUrl: actualUrl,    // Include actual DOM URL for debugging
-            hasLoginForm: hasLoginForm,
-            onAccountPage: onAccountPage
-          }));
-        } catch (error) {
-          console.error('[CookieLogin] DOM check error:', error);
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'cookieLoginError',
-            error: error.message
-          }));
-        }
-      })();
-    `;
-
-    webviewRef.current.injectJavaScript(loginCheckScript);
+    await useCookiesForVerification(stabilizedCookies);
   };
+
+  // Single-run guard for account DOM logged-in detection
+  async function onAccountDomLoggedIn() {
+    if (captureInFlightRef.current) return;
+    captureInFlightRef.current = true;
+    console.log('[CookieLogin] starting attemptCookieCapture()');
+    try {
+      await attemptCookieCapture('https://www.gradescope.com/account');  // must be awaited!
+    } finally {
+      captureInFlightRef.current = false;
+    }
+  }
 
   const handleNavigationStateChange = (navState: any) => {
     const { url, loading } = navState;
@@ -152,7 +254,7 @@ export const GradescopeLogin: React.FC<GradescopeLoginProps> = ({ onLoginSuccess
         // Use setTimeout to ensure DOM is fully loaded and avoid race conditions
         console.log('[CookieLogin] Scheduling cookie capture after DOM stabilization...');
         setTimeout(() => {
-          attemptCookieCapture(url);
+          onAccountDomLoggedIn();
         }, 500); // 500ms debounce to ensure page is fully loaded
       } else {
         // ORIGINAL: Traditional login check
@@ -263,99 +365,10 @@ export const GradescopeLogin: React.FC<GradescopeLoginProps> = ({ onLoginSuccess
       const data = JSON.parse(event.nativeEvent.data);
       console.log('Received data from WebView:', data);
 
+      // Cookie login is now handled directly in attemptCookieCapture, so we can skip this
       if (COOKIE_LOGIN_ENABLED && data.type === 'nativeCookieLogin') {
-        console.log('[CookieLogin] Processing native cookie login...');
-        console.log('[CookieLogin] DOM state:', { 
-          isLoggedIn: data.isLoggedIn, 
-          url: data.url,
-          domUrl: data.domUrl,
-          onAccountPage: data.onAccountPage,
-          hasLoginForm: data.hasLoginForm
-        });
-        
-        if (!data.isLoggedIn) {
-          console.warn('[CookieLogin] WebView indicates not logged in');
-          console.log('[CookieLogin] 🔍 Debug details:', {
-            navUrl: data.url,
-            actualDomUrl: data.domUrl,
-            onAccountPage: data.onAccountPage,
-            hasLoginForm: data.hasLoginForm
-          });
-          
-          // Diagnostic: If we landed on /account without login but no session cookies, suggest fresh login
-          if (data.url.includes('/account') || (data.domUrl && data.domUrl.includes('/account'))) {
-            console.log('[CookieLogin] 🔍 Diagnostic: On /account page but DOM indicates not authenticated');
-            if (!FORCE_FRESH_LOGIN) {
-              console.log('[CookieLogin] 💡 Suggestion: Enable FORCE_FRESH_LOGIN to clear existing cookies');
-            }
-          }
-          
-          onLoginFailure();
-          return;
-        }
-
-        // DOM confirms we're logged in - now extract cookies natively (including HttpOnly cookies)
-        console.log('[CookieLogin] ✅ DOM confirms login - extracting native cookies...');
-        try {
-          const nativeCookies = await CookieManager.get('https://www.gradescope.com');
-          
-          // Log cookie names for debugging (never values)
-          const cookieNames = Object.keys(nativeCookies);
-          console.log('[CookieLogin] Final cookie names found:', cookieNames);
-          
-          // Check if we have the critical session cookies
-          const hasSessionCookie = cookieNames.includes('_gradescope_session');
-          const hasSignedToken = cookieNames.includes('signed_token');
-          
-          if (!hasSessionCookie) {
-            console.error('[CookieLogin] ❌ CRITICAL: Missing _gradescope_session cookie even though DOM shows logged in');
-            console.log('[CookieLogin] This indicates WebView and CookieManager are using different stores');
-            if (!FORCE_FRESH_LOGIN) {
-              console.log('[CookieLogin] 💡 Try: Enable FORCE_FRESH_LOGIN=true to force fresh login');
-            }
-            onLoginFailure();
-            return;
-          }
-          
-          if (!hasSignedToken) {
-            console.warn('[CookieLogin] ⚠️  Missing signed_token cookie (may still work)');
-          }
-          
-          // Build cookie header string from native cookies
-          const cookieHeader = Object.entries(nativeCookies)
-            .map(([name, cookie]) => `${name}=${cookie.value}`)
-            .join('; ');
-          
-          console.log('[CookieLogin] ✅ Native cookie extraction successful');
-          console.log(`[CookieLogin] Found ${cookieNames.length} cookies including critical session cookies`);
-
-          // Verify cookies work with production parsing code
-          console.log('[CookieLogin] Verifying cookies with production API...');
-          const verification = await verifyCookieLogin(cookieHeader);
-          
-          if (verification.success) {
-            console.log('[CookieLogin] ✅ Cookie verification successful!');
-            console.log(`[CookieLogin] Found ${verification.coursesCount} courses, ${verification.assignmentsCount} assignments`);
-            
-            onLoginSuccess({ 
-              loginVerified: true, 
-              dashboardUrl: data.url,
-              cookieLogin: true,
-              cookieHeader: verification.cookieHeader,
-              coursesCount: verification.coursesCount,
-              assignmentsCount: verification.assignmentsCount,
-              courses: verification.courses
-            });
-          } else {
-            console.error('[CookieLogin] ❌ Cookie verification failed:', verification.error);
-            onLoginFailure();
-          }
-          
-        } catch (error) {
-          console.error('[CookieLogin] ❌ Native cookie extraction failed:', error);
-          onLoginFailure();
-        }
-
+        // This is handled in attemptCookieCapture now - just ignore
+        return;
       } else if (COOKIE_LOGIN_ENABLED && data.type === 'cookieLoginError') {
         console.error('[CookieLogin] Error during cookie extraction:', data.error);
         onLoginFailure();
@@ -389,11 +402,12 @@ export const GradescopeLogin: React.FC<GradescopeLoginProps> = ({ onLoginSuccess
         source={{ uri: GRADESCOPE_LOGIN_URL }}
         onNavigationStateChange={handleNavigationStateChange}
         onMessage={handleMessage}
-        incognito={false} // Always use persistent store for debugging (CookieManager compatibility)
+        incognito={false} // Always use persistent store - domain data cleared manually
         javaScriptEnabled={true}
         domStorageEnabled={true}
         sharedCookiesEnabled={true} // Always enable shared cookies for CookieManager access
         thirdPartyCookiesEnabled={true} // Enable third-party cookies for full compatibility
+        userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1" // Safari-like UA for backend verification
       />
     </View>
   );

@@ -198,4 +198,81 @@ router.post('/all', async (req, res) => {
   }
 });
 
+// Disconnect endpoint - clear all server session & state
+router.post('/disconnect', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    console.log(`[Disconnect] Clearing server state for user: ${userId || 'anonymous'}`);
+    
+    // Note: This is a simple implementation since we don't currently store sessions
+    // In a real Redis/DB setup, you would:
+    // - Delete sess:{userId} (cookie/session)
+    // - Delete creds:{userId} (if ever set) 
+    // - Delete any hash:{userId}:* and lastSeen:{userId}:*
+    
+    // For now, just simulate successful cleanup
+    const clearedItems = {
+      session: false, // No persistent sessions currently
+      credentials: false, // No stored credentials currently  
+      hashes: 0, // No hash entries currently
+      lastSeen: false // No lastSeen tracking currently
+    };
+    
+    console.log(`[Disconnect] Server cleanup completed:`, clearedItems);
+    
+    res.json({ 
+      success: true,
+      message: 'Server state cleared successfully',
+      cleared: clearedItems,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[Disconnect] Error clearing server state:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to clear server state', 
+      message: error.message 
+    });
+  }
+});
+
+// Debug session endpoint - show whether server thinks a session exists
+router.get('/session/debug', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    
+    console.log(`[Session Debug] Checking session state for user: ${userId || 'anonymous'}`);
+    
+    // Note: This is a simple implementation since we don't currently store sessions
+    // In a real Redis/DB setup, you would check:
+    // - sess:{userId} exists
+    // - creds:{userId} exists
+    // - Count hash:{userId}:* entries
+    // - Check lastSeen:{userId} timestamp
+    
+    const sessionState = {
+      hasSession: false, // No persistent sessions currently
+      hasCredentials: false, // No stored credentials currently
+      hashCount: 0, // No hash entries currently
+      lastSeen: null, // No lastSeen tracking currently
+      serverUptime: process.uptime(),
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log(`[Session Debug] Session state:`, sessionState);
+    
+    res.json({ 
+      success: true,
+      userId: userId || 'anonymous',
+      state: sessionState
+    });
+  } catch (error) {
+    console.error('[Session Debug] Error checking session state:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to check session state', 
+      message: error.message 
+    });
+  }
+});
+
 module.exports = router;

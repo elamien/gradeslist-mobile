@@ -12,7 +12,8 @@
     "test:gradescope": "node scripts/test-gradescope-login.js",
     "verify:integration": "node scripts/verify_integration.js",
     "verify:cookie-fix": "node scripts/verify_cookie_fix.js",
-    "test:cookie-mode": "node scripts/test_cookie_mode_integration.js"
+    "test:cookie-mode": "node scripts/test_cookie_mode_integration.js",
+    "test:disconnect": "node scripts/test_disconnect_verification.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
