@@ -5,6 +5,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAppStore } from '../../store/useAppStore';
 import { useCourses } from '../../hooks/useCourses';
 import { GradescopeWebViewProxy, GradescopeProxyMethods } from '../../components/GradescopeWebViewProxy';
+import { GradescopeLogin } from '../../components/GradescopeLogin';
 import { setGradescopeProxy, clearGradescopeProxy } from '../../utils/proxyRegistry';
 import { NotificationService } from '../../services/notificationService';
 
@@ -39,6 +40,7 @@ export default function ProfileScreen() {
   
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showGradescopeCredentialsModal, setShowGradescopeCredentialsModal] = useState(false);
+  const [showGradescopeWebViewModal, setShowGradescopeWebViewModal] = useState(false);
   
   const [gradescopeEmail, setGradescopeEmail] = useState('');
   const [gradescopePassword, setGradescopePassword] = useState('');
@@ -73,11 +75,17 @@ export default function ProfileScreen() {
     try {
       console.log('handleConnect called with:', connection);
       setSelectedConnection(connection);
-      // Always show credential collection modal (no more WebView step)
-      setUsername('');
-      setPassword('');
-      setShowPassword(connection.id !== 'canvas'); // Show password except for Canvas
-      setShowLoginModal(true);
+      
+      if (connection.id === 'gradescope') {
+        // For Gradescope, show WebView login modal (cookie-based flow)
+        setShowGradescopeWebViewModal(true);
+      } else {
+        // For other platforms, show credential collection modal
+        setUsername('');
+        setPassword('');
+        setShowPassword(connection.id !== 'canvas'); // Show password except for Canvas
+        setShowLoginModal(true);
+      }
     } catch (error) {
       console.error('Error in handleConnect:', error);
       Alert.alert('Error', 'Failed to open connection dialog');
@@ -123,6 +131,43 @@ export default function ProfileScreen() {
       Alert.alert('Connection Failed', errorMessage);
     } finally {
       setIsConnecting(false);
+    }
+  };
+
+  // Handler for cookie-based login success
+  const handleCookieLoginSuccess = async (loginData: any) => {
+    console.log('[Profile] Cookie login success:', loginData);
+    
+    try {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      
+      // Store cookie-based credentials
+      await connectPlatform('gradescope', { 
+        proxyReady: true, 
+        loginData: { 
+          cookieBased: true,
+          coursesCount: loginData.coursesCount,
+          assignmentsCount: loginData.assignmentsCount
+        },
+        cookies: loginData.cookieHeader,
+        lastLogin: new Date().toISOString()
+      });
+
+      // Close modal on success
+      setShowGradescopeWebViewModal(false);
+      
+      const message = `Successfully connected to Gradescope!\n\n` +
+                     `✅ Cookie-based authentication verified\n` +
+                     `📚 Found ${loginData.coursesCount} courses\n` +
+                     `📝 Found ${loginData.assignmentsCount} assignments\n\n` +
+                     `Your session is now active and secure.`;
+      
+      Alert.alert('Cookie Login Success!', message);
+      
+    } catch (error) {
+      console.error('Cookie connection error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to store cookie session';
+      Alert.alert('Connection Failed', errorMessage);
     }
   };
 
@@ -1209,6 +1254,51 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      {/* Gradescope WebView Login Modal (Cookie-based flow) */}
+      <Modal
+        visible={showGradescopeWebViewModal}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowGradescopeWebViewModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
+          {/* Header */}
+          <View style={{ 
+            flexDirection: 'row', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            padding: 16,
+            paddingTop: 50, // Account for status bar
+            backgroundColor: '#3B82F6',
+            borderBottomWidth: 1,
+            borderBottomColor: '#e5e5e5'
+          }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: 'white' }}>
+              📊 Login to Gradescope
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowGradescopeWebViewModal(false)}
+              style={{
+                padding: 8,
+                borderRadius: 20,
+                backgroundColor: 'rgba(255,255,255,0.2)'
+              }}
+            >
+              <MaterialIcons name="close" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+          
+          {/* WebView Login */}
+          <GradescopeLogin
+            onLoginSuccess={handleCookieLoginSuccess}
+            onLoginFailure={() => {
+              setShowGradescopeWebViewModal(false);
+              Alert.alert('Login Failed', 'Could not verify your Gradescope login. Please try again.');
+            }}
+          />
         </View>
       </Modal>
 

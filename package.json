@@ -8,11 +8,16 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test:gradescope": "node scripts/test-gradescope-login.js",
+    "verify:integration": "node scripts/verify_integration.js",
+    "verify:cookie-fix": "node scripts/verify_cookie_fix.js",
+    "test:cookie-mode": "node scripts/test_cookie_mode_integration.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-cookies/cookies": "^6.2.1",
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
@@ -25,6 +30,7 @@
     "@tanstack/react-query": "^5.83.0",
     "@types/luxon": "^3.6.2",
     "axios": "^1.10.0",
+    "axios-cookiejar-support": "^6.0.4",
     "cheerio": "^1.0.0-rc.12",
     "expo": "~53.0.17",
     "expo-blur": "~14.1.5",
@@ -61,6 +67,7 @@
     "react-native-web": "~0.20.0",
     "react-native-webview": "^13.13.5",
     "tamagui": "^1.132.9",
+    "tough-cookie": "^5.1.2",
     "zustand": "^5.0.6"
   },
   "devDependencies": {

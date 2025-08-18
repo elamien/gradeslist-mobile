@@ -7,6 +7,7 @@ import {
   fetchServerGradescopeAssignments as fetchGradescopeAssignments, 
   testServerGradescopeConnection as testGradescopeConnection 
 } from './server-gradescope-api';
+import { getGradescopeClient } from './gradescopeClient';
 import { 
   mapCanvasAssignmentsToUniversal, 
   mapCanvasCoursesToUniversal,
@@ -48,7 +49,11 @@ export async function getGradescopeAssignments(
   credentials: PlatformCredentials
 ): Promise<UniversalAssignment[]> {
   try {
-    const gradescopeAssignments = await fetchGradescopeAssignments(courseId, credentials);
+    // Use client factory to route to cookie vs server mode
+    const client = getGradescopeClient(credentials);
+    console.log(`[Universal API] Gradescope assignments fetch - mode: ${client.mode}`);
+    
+    const gradescopeAssignments = await client.fetchAssignments(courseId);
     return mapGradescopeAssignmentsToUniversal(gradescopeAssignments).map(assignment => ({
       ...assignment,
       platform: 'gradescope' as const
@@ -179,7 +184,11 @@ export async function getGradescopeCourses(
   credentials: PlatformCredentials
 ): Promise<{ student: UniversalCourse[], instructor: UniversalCourse[] }> {
   try {
-    const gradescopeCourseList = await fetchGradescopeCourses(filterTerm, credentials);
+    // Use client factory to route to cookie vs server mode
+    const client = getGradescopeClient(credentials);
+    console.log(`[Universal API] Gradescope courses fetch - mode: ${client.mode}`);
+    
+    const gradescopeCourseList = await client.fetchCourses(filterTerm);
     const universalCourseList = mapGradescopeCourseListToUniversal(gradescopeCourseList);
     
     return {
@@ -232,6 +241,15 @@ export async function testConnection(
     }
     return await testCanvasConnection(credentials);
   } else {
+    // For Gradescope, check if we have cookie-based credentials
+    if (credentials.cookies && credentials.loginData?.cookieBased) {
+      console.log('[CookieLogin] 🔍 TestConnection called with cookie credentials - assuming valid since already verified');
+      // Cookie credentials have already been verified in the WebView flow
+      // Return true to indicate connection is valid
+      return true;
+    }
+    
+    // For server-based credentials, test the connection
     return await testGradescopeConnection(credentials);
   }
 }

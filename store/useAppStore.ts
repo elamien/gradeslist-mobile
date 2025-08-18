@@ -80,7 +80,7 @@ const initialConnections: PlatformConnection[] = [
   {
     id: 'gradescope',
     name: 'Gradescope',
-    description: 'Link Gradescope to view graded assignments and feedback',
+    description: '🔧 Native Cookie Debug - Fixed HttpOnly cookie extraction',
     icon: '📊',
     color: '#3B82F6',
     isConnected: false,
@@ -136,7 +136,35 @@ export const useAppStore = create<AppState>()(
 
       connectPlatform: async (id, credentials) => {
         try {
-          // Test the connection first
+          // Check if this is a cookie-based login that's already been verified
+          const isCookieLoginVerified = credentials.loginData?.cookieBased && 
+                                      credentials.loginData?.coursesCount !== undefined &&
+                                      credentials.cookies;
+          
+          if (isCookieLoginVerified) {
+            console.log('[CookieLogin] ✅ Verified with API - not attempting server login');
+            console.log(`[CookieLogin] Cookie login already verified: ${credentials.loginData.coursesCount} courses, ${credentials.loginData.assignmentsCount} assignments`);
+            
+            // Skip server-based connection test for verified cookie logins
+            // Store credentials securely
+            await storeCredentials(id, credentials);
+            
+            // Update connection state
+            set((state) => ({
+              connections: state.connections.map((conn) =>
+                conn.id === id
+                  ? { ...conn, isConnected: true, credentials }
+                  : conn
+              ),
+              selectedConnection: null,
+            }));
+            
+            console.log('[CookieLogin] ✅ Platform connected via cookie authentication');
+            return;
+          }
+          
+          // For non-cookie logins, test the connection first
+          console.log(`[Platform] Testing ${id} connection with server-based credentials...`);
           const { universalAPI } = await import('../integrations/mobile-universal-api');
           const isValid = await universalAPI.testConnection(
             id as 'canvas' | 'gradescope',
@@ -146,6 +174,8 @@ export const useAppStore = create<AppState>()(
           if (!isValid) {
             throw new Error('Invalid credentials - connection test failed');
           }
+          
+          console.log(`[Platform] ✅ ${id} server connection test passed`);
           
           // Store credentials securely
           await storeCredentials(id, credentials);
