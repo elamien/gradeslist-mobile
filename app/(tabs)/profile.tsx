@@ -1070,6 +1070,28 @@ export default function ProfileScreen() {
                 autoComplete={selectedConnection?.id === 'canvas' ? 'off' : 'email'}
                 keyboardType={selectedConnection?.id === 'canvas' ? 'default' : 'email-address'}
               />
+              {selectedConnection?.id === 'canvas' && (
+                <View style={{ 
+                  marginTop: 12,
+                  padding: 12,
+                  backgroundColor: '#f0f9ff',
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: '#bfdbfe'
+                }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#1e40af', marginBottom: 6 }}>
+                    📋 How to get your Canvas API token:
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#1e40af', lineHeight: 16 }}>
+                    1. Log into your college's Canvas{'\n'}
+                    2. Click "Account" → "Settings"{'\n'}
+                    3. Scroll to "+ New Access Token"{'\n'}
+                    4. Purpose: "GradesList Mobile App"{'\n'}
+                    5. Leave expiration blank → "Generate Token"{'\n'}
+                    6. Copy token immediately (won't show again)
+                  </Text>
+                </View>
+              )}
             </View>
 
             {selectedConnection?.id !== 'canvas' && (
