@@ -137,38 +137,85 @@ export default function DueScreen() {
           }
         >
           <View style={{ gap: 12 }}>
-            {assignments.map((assignment) => (
-              <TouchableOpacity key={assignment.id} activeOpacity={0.8}>
-                <View style={{
-                  backgroundColor: '#ffffff',
-                  borderRadius: 12,
-                  padding: 16,
-                  borderWidth: 1,
-                  borderColor: '#e5e5e5',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 4,
-                  elevation: 2
-                }}>
-                  <Text 
-                    style={{ fontSize: 16, fontWeight: '500', marginBottom: 8 }}
-                    numberOfLines={2}
-                    ellipsizeMode="tail"
-                  >
-                    {assignment.title}
-                  </Text>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 14, color: '#666' }}>
-                      {assignment.courseName || 'Unknown Course'}
-                    </Text>
-                    <Text style={{ fontSize: 14, color: '#dc2626' }}>
-                      {assignment.dueDate ? formatDate(assignment.dueDate) : 'No date'}
-                    </Text>
+            {assignments.map((assignment) => {
+              // Platform badge info
+              const getPlatformBadge = (platform: 'canvas' | 'gradescope') => {
+                if (platform === 'canvas') {
+                  return { text: 'Canvas', color: '#e11d48', bgColor: '#fef2f2', borderColor: '#fecaca' };
+                } else {
+                  return { text: 'Gradescope', color: '#2563eb', bgColor: '#eff6ff', borderColor: '#bfdbfe' };
+                }
+              };
+
+              const badge = getPlatformBadge(assignment.platform);
+
+              return (
+                <TouchableOpacity key={assignment.id} activeOpacity={0.8}>
+                  <View style={{
+                    backgroundColor: '#ffffff',
+                    borderRadius: 12,
+                    padding: 16,
+                    borderWidth: 1,
+                    borderColor: '#e5e5e5',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                    elevation: 2
+                  }}>
+                    {/* Header row with title and platform badge */}
+                    <View style={{ 
+                      flexDirection: 'row', 
+                      alignItems: 'flex-start', 
+                      marginBottom: 8,
+                      gap: 12
+                    }}>
+                      <Text 
+                        style={{ 
+                          fontSize: 16, 
+                          fontWeight: '500',
+                          flex: 1,
+                          paddingRight: 8
+                        }}
+                        numberOfLines={2}
+                        ellipsizeMode="tail"
+                      >
+                        {assignment.title}
+                      </Text>
+                      <View style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 12,
+                        backgroundColor: badge.bgColor,
+                        borderWidth: 1,
+                        borderColor: badge.borderColor,
+                        alignItems: 'center'
+                      }}>
+                        <Text style={{ 
+                          fontSize: 10, 
+                          fontWeight: '600',
+                          color: badge.color,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5
+                        }}>
+                          {badge.text}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Bottom row with course and due date */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 14, color: '#666' }}>
+                        {assignment.courseName || 'Unknown Course'}
+                      </Text>
+                      <Text style={{ fontSize: 14, color: '#dc2626' }}>
+                        {assignment.dueDate ? formatDate(assignment.dueDate) : 'No date'}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </ScrollView>
       </View>

@@ -173,6 +173,17 @@ export default function GradesScreen() {
                 ? getGradeColor(assignment.score, assignment.maxPoints)
                 : '#666';
 
+              // Platform badge info
+              const getPlatformBadge = (platform: 'canvas' | 'gradescope') => {
+                if (platform === 'canvas') {
+                  return { text: 'Canvas', color: '#e11d48', bgColor: '#fef2f2', borderColor: '#fecaca' };
+                } else {
+                  return { text: 'Gradescope', color: '#2563eb', bgColor: '#eff6ff', borderColor: '#bfdbfe' };
+                }
+              };
+
+              const badge = getPlatformBadge(assignment.platform);
+
               return (
                 <TouchableOpacity key={assignment.id} activeOpacity={0.8}>
                   <View style={{
@@ -189,13 +200,45 @@ export default function GradesScreen() {
                     gap: 12
                   }}>
                     <View style={{ gap: 8 }}>
-                      <Text 
-                        style={{ fontSize: 16, fontWeight: '500' }}
-                        numberOfLines={2}
-                        ellipsizeMode="tail"
-                      >
-                        {assignment.title}
-                      </Text>
+                      {/* Header row with title and platform badge */}
+                      <View style={{ 
+                        flexDirection: 'row', 
+                        alignItems: 'flex-start',
+                        gap: 12
+                      }}>
+                        <Text 
+                          style={{ 
+                            fontSize: 16, 
+                            fontWeight: '500',
+                            flex: 1,
+                            paddingRight: 8
+                          }}
+                          numberOfLines={2}
+                          ellipsizeMode="tail"
+                        >
+                          {assignment.title}
+                        </Text>
+                        <View style={{
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          borderRadius: 12,
+                          backgroundColor: badge.bgColor,
+                          borderWidth: 1,
+                          borderColor: badge.borderColor,
+                          alignItems: 'center'
+                        }}>
+                          <Text style={{ 
+                            fontSize: 10, 
+                            fontWeight: '600',
+                            color: badge.color,
+                            textTransform: 'uppercase',
+                            letterSpacing: 0.5
+                          }}>
+                            {badge.text}
+                          </Text>
+                        </View>
+                      </View>
+
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Text style={{ fontSize: 14, color: '#666' }}>
                           {assignment.courseName || 'Unknown Course'}
